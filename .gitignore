@@ -1,0 +1,15 @@
+# Statcast parquet cache — 653 MB, rebuilt with `python src/fetch.py`
+data/
+
+# Virtual environment
+.venv/
+
+# Generated analysis output; rebuilt by the run_* scripts
+output/
+
+__pycache__/
+*.pyc
+.DS_Store
+
+# Microsoft Office lock/temp files
+~$*

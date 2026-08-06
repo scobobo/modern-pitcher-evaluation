@@ -1,0 +1,6 @@
+pandas>=2.2
+numpy>=1.26
+pybaseball>=2.2.7
+scikit-learn>=1.5
+matplotlib>=3.8
+pyarrow>=15.0
