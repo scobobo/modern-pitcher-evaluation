@@ -1034,6 +1034,7 @@
         <li><strong>True spin efficiency is not measurable from public data.</strong> Statcast's <code>spin_axis</code> is inferred from observed movement, not measured from Hawk-Eye's 3D axis. Every public "spin efficiency" figure, including any derivable here, is an inference. This is the single largest gap between this analysis and what a club can do internally.</li>
         <li><strong>Everything here is observational.</strong> Nothing establishes that adding two inches of IVB to a specific pitcher's fastball would improve his results.</li>
         <li><strong>Shape features are collinear</strong> with each other and with velocity. The block's contribution is well identified; individual coefficients within it are not, and should not be quoted as effect sizes.</li>
+        <li><strong>The height adjustment removes a main effect, not an interaction.</strong> Chamberlain (2021) shows that VAA's influence is concentrated at the vertical extremes of the zone and that VAA and pitch height interact non-linearly. The quadratic residualisation in §4.3 strips out the average relationship between approach angle and height, but it does not model that interaction. A specification allowing the VAA effect to vary by zone region would likely find a larger shape contribution than reported here, so the §5.3 figure is better read as a conservative floor than as a point estimate.</li>
         <li><strong>Sequencing and tunnelling are absent.</strong> A fastball plays off the pitch before it. Some of what is credited to shape is plausibly the arsenal-level interaction that shape enables.</li>
         <li><strong>Survivorship.</strong> Reliability figures come from pitchers who threw at least 250 four-seamers — pitchers good enough to keep being used.</li>
         <li><strong>The Trackman–Hawk-Eye transition</strong> before 2020 makes spin values non-comparable across that boundary; models are fit per season, never pooled across it.</li>
@@ -1120,6 +1121,8 @@
 
       <p>Every figure in this paper is produced by the analysis code, from data downloaded directly from Baseball Savant. No number here was entered by hand.</p>
 
+      <p>All code is available at <a href="https://github.com/scobobo/modern-pitcher-evaluation"><code>github.com/scobobo/modern-pitcher-evaluation</code></a>, released under the MIT licence. The Statcast cache is not committed — it is rebuilt by the fetch script below.</p>
+
       <h4>Environment</h4>
       <pre><code>pip install pandas numpy scikit-learn matplotlib pyarrow
 pip install --no-deps pybaseball pygithub pyjwt Deprecated wrapt pynacl
@@ -1152,17 +1155,21 @@ python run_sample_size_test.py</code></pre>
       <ul>
         <li><strong>Statcast pitch-tracking data.</strong> MLB Advanced Media, via Baseball Savant (<code>baseballsavant.mlb.com</code>). 2015–2025 regular seasons, retrieved August 2026. Tracking hardware: TrackMan through 2019, Hawk-Eye from 2020.</li>
         <li><strong>pybaseball.</strong> Open-source Python library for retrieving baseball data, used here for the Statcast pulls.</li>
+        <li><strong>Analysis code for this paper.</strong> <a href="https://github.com/scobobo/modern-pitcher-evaluation">github.com/scobobo/modern-pitcher-evaluation</a>, MIT licence.</li>
         <li><strong>scikit-learn.</strong> Pedregosa et al., "Scikit-learn: Machine Learning in Python," <em>Journal of Machine Learning Research</em> 12 (2011), 2825–2830. Provides the gradient-boosting, ridge, and cross-validation implementations.</li>
         <li><strong>Run expectancy framework.</strong> Tango, Lichtman &amp; Dolphin, <em>The Book: Playing the Percentages in Baseball</em> (2006), the basis for the change-in-run-expectancy outcome used throughout.</li>
         <li><strong>Baseball aerodynamics.</strong> Alan M. Nathan's published work on the physics of the baseball in flight, which underlies the Magnus-effect reasoning in §2.1 and the gyro-spin caveat in §5.2.</li>
       </ul>
 
-      <div class="caution">
-        <span class="tag">Note on the reference list</span>
-        <p>This list is deliberately short and contains only sources whose existence and details are certain. Public analytical work on vertical approach angle — much of it published at FanGraphs and by independent analysts — informed the framing of §2.2, and any version of this paper submitted for publication should cite those specific pieces directly. They are omitted here rather than cited approximately.</p>
-      </div>
+      <h3><span class="num">10.2</span>Prior work on approach angle</h3>
+      <p>Vertical approach angle was not developed here. It was established as a public analytical concept largely through the following, which informed the framing in §2.2 and the height-adjustment procedure in §4.3:</p>
+      <ul>
+        <li>Alex Chamberlain, "<a href="https://blogs.fangraphs.com/where-vertical-approach-angle-seems-to-matter-most/">Where Vertical Approach Angle Seems to Matter Most</a>," <em>FanGraphs</em>, 7 January 2021. Finds that VAA's effect on whiffs is concentrated at the vertical extremes of the strike zone rather than through its middle, and that VAA and pitch height interact non-linearly — a flat pitch thrown low does not behave like a flat pitch thrown high.</li>
+        <li>Alex Chamberlain, "<a href="https://blogs.fangraphs.com/a-visualized-primer-on-vertical-approach-angle-vaa/">A Visualized Primer on Vertical Approach Angle (VAA)</a>," <em>FanGraphs</em>, 1 February 2022. Documents the strong correlation between VAA and pitch height that motivates the height-adjusted measure used throughout this paper, and maintains a public VAA Above Average leaderboard built on the same reasoning.</li>
+      </ul>
+      <p>The height-adjusted VAA used here (§4.3) is a simpler construction than Chamberlain's leaderboard measure — a quadratic residual within season and pitch type — and is used because it can be recomputed from raw Statcast fields by anyone reproducing this analysis.</p>
 
-      <h3><span class="num">10.2</span>Author contributions and use of AI tools</h3>
+      <h3><span class="num">10.3</span>Author contributions and use of AI tools</h3>
 
       <p>I directed, interpreted, revised, and published this study; parts of its implementation and drafting were produced with AI assistance. The division of labour is set out below so readers can weigh it for themselves rather than guess.</p>
 

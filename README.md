@@ -6,6 +6,8 @@ pitchers should be evaluated.
 
 📄 **Read the paper:** _(add link once published)_
 
+💻 **Code:** [https://github.com/scobobo/modern-pitcher-evaluation](https://github.com/scobobo/modern-pitcher-evaluation)
+
 ---
 
 ## Findings

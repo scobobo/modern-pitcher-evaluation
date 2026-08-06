@@ -773,6 +773,13 @@ def build() -> Path:
          "IVB to a specific pitcher's fastball would improve his results.", "")],
         [("Shape features are collinear", "b"), (" with each other and with velocity. The block's "
          "contribution is well identified; individual coefficients within it are not.", "")],
+        [("The height adjustment removes a main effect, not an interaction.", "b"), (" Chamberlain "
+         "(2021) shows that VAA's influence is concentrated at the vertical extremes of the zone and "
+         "that VAA and pitch height interact non-linearly. The quadratic residualisation in §4.3 strips "
+         "out the average relationship between approach angle and height, but does not model that "
+         "interaction. A specification allowing the VAA effect to vary by zone region would likely find "
+         "a larger shape contribution than reported here, so the §5.3 figure is better read as a "
+         "conservative floor than a point estimate.", "")],
         [("Sequencing and tunnelling are absent.", "b"), (" A fastball plays off the pitch before it. "
          "Some of what is credited to shape is plausibly the arsenal-level interaction shape enables.", "")],
         [("Survivorship.", "b"), (" Reliability figures come from pitchers who threw at least 250 "
@@ -936,6 +943,9 @@ def build() -> Path:
     heading(doc, "9", "Reproduction")
     para(doc, "Every figure in this paper is produced by the analysis code, from data downloaded "
               "directly from Baseball Savant. No number here was entered by hand.")
+    para(doc, "All code is available at github.com/scobobo/modern-pitcher-evaluation, released "
+              "under the MIT licence. The Statcast cache is not committed — it is rebuilt by the "
+              "fetch script below.")
 
     for label, cmds in (
         ("Environment", ["pip install pandas numpy scikit-learn matplotlib pyarrow",
@@ -974,6 +984,7 @@ def build() -> Path:
          "TrackMan through 2019, Hawk-Eye from 2020.", "")],
         [("pybaseball.", "b"), (" Open-source Python library for retrieving baseball data, used here "
          "for the Statcast pulls.", "")],
+        [("Analysis code for this paper.", "b"), (" github.com/scobobo/modern-pitcher-evaluation, MIT licence.", "")],
         [("scikit-learn.", "b"), (" Pedregosa et al., “Scikit-learn: Machine Learning in Python,” "
          "Journal of Machine Learning Research 12 (2011), 2825–2830.", "")],
         [("Run expectancy framework.", "b"), (" Tango, Lichtman & Dolphin, The Book: Playing the "
@@ -982,15 +993,28 @@ def build() -> Path:
          "baseball in flight, underlying the Magnus-effect reasoning in §2.1 and the gyro-spin caveat "
          "in §5.2.", "")],
     ])
-    callout(doc, "Note on the reference list", [
-        "This list is deliberately short and contains only sources whose existence and details are "
-        "certain. Public analytical work on vertical approach angle — much of it published at FanGraphs "
-        "and by independent analysts — informed the framing of §2.2, and any version of this paper "
-        "submitted for publication should cite those specific pieces directly. They are omitted here "
-        "rather than cited approximately."],
-        band=WARN_BAND, bar="D9A441")
+    heading(doc, "10.2", "Prior work on approach angle", level=2)
+    para(doc, "Vertical approach angle was not developed here. It was established as a public "
+              "analytical concept largely through the following, which informed the framing in §2.2 "
+              "and the height-adjustment procedure in §4.3:")
+    bullets(doc, [
+        [("Alex Chamberlain, “Where Vertical Approach Angle Seems to Matter Most,” FanGraphs, "
+          "7 January 2021.", "b"), (" Finds that VAA's effect on whiffs is concentrated at the "
+         "vertical extremes of the strike zone rather than through its middle, and that VAA and pitch "
+         "height interact non-linearly — a flat pitch thrown low does not behave like a flat pitch "
+         "thrown high. blogs.fangraphs.com/where-vertical-approach-angle-seems-to-matter-most/", "")],
+        [("Alex Chamberlain, “A Visualized Primer on Vertical Approach Angle (VAA),” FanGraphs, "
+          "1 February 2022.", "b"), (" Documents the strong correlation between VAA and pitch height "
+         "that motivates the height-adjusted measure used throughout this paper, and maintains a "
+         "public VAA Above Average leaderboard built on the same reasoning. "
+         "blogs.fangraphs.com/a-visualized-primer-on-vertical-approach-angle-vaa/", "")],
+    ])
+    para(doc, "The height-adjusted VAA used here (§4.3) is a simpler construction than Chamberlain's "
+              "leaderboard measure — a quadratic residual within season and pitch type — and is used "
+              "because it can be recomputed from raw Statcast fields by anyone reproducing this "
+              "analysis.")
 
-    heading(doc, "10.2", "Author contributions and use of AI tools", level=2)
+    heading(doc, "10.3", "Author contributions and use of AI tools", level=2)
     para(doc, "I directed, interpreted, revised, and published this study; parts of its implementation "
               "and drafting were produced with AI assistance. The division of labour is set out below "
               "so readers can weigh it for themselves rather than guess.")
