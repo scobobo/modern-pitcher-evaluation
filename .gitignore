@@ -13,3 +13,7 @@ __pycache__/
 
 # Microsoft Office lock/temp files
 ~$*
+
+# Generated paper editions — rebuilt by build_docx.py / build_standalone.py
+The-Shape-of-the-Modern-Pitch.docx
+The-Shape-of-the-Modern-Pitch.html
