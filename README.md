@@ -4,7 +4,7 @@ Analysis code for a pitch-level study of **7,483,321 Statcast pitches (2015–20
 testing what actually drives pitch outcomes — and what that implies for how
 pitchers should be evaluated.
 
-📄 **Read the paper:** _(add link once published)_
+📄 **Read the paper:** https://the-shape-of-the-modern-pitch.netlify.app/
 
 💻 **Code:** [https://github.com/scobobo/modern-pitcher-evaluation](https://github.com/scobobo/modern-pitcher-evaluation)
 
