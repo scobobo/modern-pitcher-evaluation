@@ -17,3 +17,6 @@ __pycache__/
 # Generated paper editions — rebuilt by build_docx.py / build_standalone.py
 The-Shape-of-the-Modern-Pitch.docx
 The-Shape-of-the-Modern-Pitch.html
+
+# Assembled deploy folder — rebuilt by build_standalone.py
+site/

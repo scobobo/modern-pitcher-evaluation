@@ -214,3 +214,60 @@ def build_all() -> dict[str, "object"]:
 if __name__ == "__main__":
     for name, p in build_all().items():
         print(f"{name}: {p.name}")
+
+
+def fig_social_card(path):
+    """1200x630 link-preview card.
+
+    Sized for the Open Graph standard that LinkedIn, X, and Slack read. The
+    crossover is the hook: it is the one finding that is counterintuitive in a
+    single glance, so the card leads with it rather than with the headline
+    effect size.
+    """
+    fig = plt.figure(figsize=(12, 6.3), dpi=100)
+    fig.patch.set_facecolor("#FFFFFF")
+
+    # Left: the claim. Right: the evidence.
+    # Every block is anchored va="top" so the vertical rhythm is explicit and
+    # multi-line blocks cannot grow downward into the block beneath them.
+    fig.text(0.055, 0.90, "BASEBALL RESEARCH", fontsize=12.5, color=C_SHAPE,
+             fontweight="bold", family="DejaVu Sans", va="top")
+    fig.text(0.055, 0.815, "The Shape of the", fontsize=38, color=INK,
+             fontweight="bold", family="DejaVu Serif", va="top")
+    fig.text(0.055, 0.695, "Modern Pitch", fontsize=38, color=INK,
+             fontweight="bold", family="DejaVu Serif", va="top")
+
+    fig.text(0.055, 0.505,
+             "Below ~80 pitches, a pitcher's ball flight\n"
+             "predicts his next season better than\n"
+             "his own results do.",
+             fontsize=16.5, color=INK2, family="DejaVu Sans", linespacing=1.6, va="top")
+
+    fig.text(0.055, 0.135, "7,483,321 Statcast pitches  ·  2015–2025", fontsize=13,
+             color=INK2, family="DejaVu Sans", va="top")
+
+    # Inset chart — same numbers and palette as Figure 4.
+    ax = fig.add_axes([0.545, 0.20, 0.40, 0.60])
+    n = np.array([30, 60, 125, 250, 500])
+    shape = np.array([0.1882, 0.1927, 0.1915, 0.2062, 0.1884])
+    results = np.array([0.0941, 0.1597, 0.2502, 0.3209, 0.3621])
+
+    ax.axvline(80, color=RULE, ls=(0, (3, 4)), lw=1.4)
+    ax.plot(n, shape, "o-", color=C_SHAPE, lw=3.2, ms=8, mec="white", mew=2, label="Ball flight")
+    ax.plot(n, results, "s-", color=C_COMP, lw=3.2, ms=8, mec="white", mew=2, label="Past results")
+    ax.set_xscale("log")
+    ax.set_xticks(n)
+    ax.set_xticklabels([str(v) for v in n], fontsize=11)
+    ax.minorticks_off()
+    ax.set_ylim(0, 0.42)
+    ax.set_yticks([])
+    ax.set_xlabel("four-seamers observed", fontsize=12, color=INK2)
+    ax.legend(frameon=False, fontsize=12, loc="upper left")
+    for side in ("top", "right", "left"):
+        ax.spines[side].set_visible(False)
+    ax.spines["bottom"].set_color(RULE)
+    ax.grid(axis="y", color=RULE, lw=0.8)
+    ax.set_axisbelow(True)
+
+    fig.savefig(path, dpi=100, facecolor="#FFFFFF")
+    plt.close(fig)

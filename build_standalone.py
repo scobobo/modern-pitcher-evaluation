@@ -18,6 +18,15 @@ ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "paper.html"
 OUTPUT = ROOT / "The-Shape-of-the-Modern-Pitch.html"
 
+# Where the paper is hosted. Open Graph images must be absolute URLs -- a
+# relative path renders no preview card at all on LinkedIn, X, or Slack.
+SITE_URL = "https://the-shape-of-the-modern-pitch.netlify.app"
+SOCIAL_CARD = "social-card.png"
+
+# A folder that can be dropped straight onto a static host: index.html plus the
+# preview image the meta tags point at.
+DEPLOY_DIR = ROOT / "site"
+
 DESCRIPTION = (
     "A pitch-level study of 7.5 million Statcast pitches (2015-2025) showing that "
     "ball-flight geometry, not velocity or spin rate, drives pitch outcomes - with a "
@@ -66,6 +75,16 @@ def main() -> None:
 <meta property="og:title" content="{title}">
 <meta property="og:description" content="{DESCRIPTION}">
 <meta property="og:type" content="article">
+<meta property="og:url" content="{SITE_URL}/">
+<meta property="og:image" content="{SITE_URL}/{SOCIAL_CARD}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Chart: below about 80 pitches, a pitcher's ball flight predicts his next season better than his own results do.">
+<meta property="og:site_name" content="The Shape of the Modern Pitch">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{title}">
+<meta name="twitter:description" content="{DESCRIPTION}">
+<meta name="twitter:image" content="{SITE_URL}/{SOCIAL_CARD}">
 <style>
   html {{ -webkit-text-size-adjust: 100%; }}
   body {{ margin: 0; }}
@@ -79,7 +98,21 @@ def main() -> None:
 
     OUTPUT.write_text(html, encoding="utf-8")
     kb = OUTPUT.stat().st_size / 1024
-    print(f"wrote {OUTPUT.name} ({kb:.0f} KB, self-contained, no external requests)")
+    print(f"wrote {OUTPUT.name} ({kb:.0f} KB, self-contained)")
+
+    # Assemble the drag-and-drop deploy folder.
+    import shutil
+
+    DEPLOY_DIR.mkdir(exist_ok=True)
+    (DEPLOY_DIR / "index.html").write_text(html, encoding="utf-8")
+
+    card_src = ROOT / "output" / "paper" / "figures" / SOCIAL_CARD
+    if card_src.exists():
+        shutil.copy(card_src, DEPLOY_DIR / SOCIAL_CARD)
+        print(f"wrote site/index.html + site/{SOCIAL_CARD} -> drag `site/` onto your host")
+    else:
+        print(f"WARNING: {card_src} missing - run src/paper_figures.py first; "
+              "the preview card will 404 and no link card will render")
 
 
 if __name__ == "__main__":
