@@ -30,7 +30,16 @@ SEASON_WINDOWS: dict[int, tuple[str, str]] = {
     2023: ("2023-03-30", "2023-10-01"),
     2024: ("2024-03-20", "2024-09-29"),
     2025: ("2025-03-18", "2025-09-28"),
+    # In progress. The end date is "as of" rather than the season's close, so
+    # anything built on 2026 is a partial sample by construction -- which is
+    # precisely the regime where shape outperforms outcome statistics.
+    2026: ("2026-03-25", "2026-08-05"),
 }
+
+# Seasons that are complete. Trend analysis and model training use these only;
+# a partial season would enter on different terms from the ones around it.
+COMPLETE_SEASONS = tuple(range(2015, 2026))
+CURRENT_PARTIAL_SEASON = 2026
 
 # Pitch types worth modelling. Anything rarer than this is too sparse to fit
 # per-season without the estimates becoming noise.
