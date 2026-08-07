@@ -142,43 +142,103 @@ def measure_gap_reversal(table: pd.DataFrame, *, target: str, min_pitches: int =
     }
 
 
+def fit_projection(table: pd.DataFrame, *, target: str, min_pitches: int = 250) -> dict:
+    """Fit next-season = f(this-season result, shape expectation) on history.
+
+    Two models are fit, and the difference between them is the entire point:
+
+      * `naive`  — next season from this season's result alone. This is pure
+        regression to the mean, and it is what any extreme value will do
+        regardless of how the pitch is shaped.
+      * `full`   — adds the shape expectation.
+
+    Ranking by the raw shape-results gap conflates the two, and mean reversion
+    is by far the larger term, so the extremes of such a list are simply the
+    extremes of the outcome statistic. Ranking by (full - naive) isolates what
+    shape contributes that mean reversion does not already predict.
+    """
+    exp_col = f"{target}_expected"
+    cur = table[table["n_pitches"] >= min_pitches]
+    nxt = cur[["pitcher", "game_year", target]].copy()
+    nxt["game_year"] -= 1
+    nxt = nxt.rename(columns={target: "next_actual"})
+
+    m = cur.merge(nxt, on=["pitcher", "game_year"], how="inner")
+    m = m[[target, exp_col, "next_actual"]].dropna()
+
+    y = m["next_actual"].to_numpy(dtype=float)
+    naive = Ridge(alpha=1.0, random_state=RANDOM_SEED).fit(m[[target]].to_numpy(float), y)
+    full = Ridge(alpha=1.0, random_state=RANDOM_SEED).fit(m[[target, exp_col]].to_numpy(float), y)
+
+    def _r2(model, cols):
+        pred = model.predict(m[cols].to_numpy(float))
+        ss_res = float(((y - pred) ** 2).sum())
+        ss_tot = float(((y - y.mean()) ** 2).sum())
+        return 1 - ss_res / ss_tot
+
+    return {
+        "n_pairs": len(m),
+        "naive": naive,
+        "full": full,
+        "naive_r2": _r2(naive, [target]),
+        "full_r2": _r2(full, [target, exp_col]),
+        "shape_coef": float(full.coef_[1]),
+        "result_coef": float(full.coef_[0]),
+    }
+
+
 def rank_candidates(
     table: pd.DataFrame,
     *,
     season: int,
     target: str,
-    reversal_fraction: float,
-    min_pitches: int = 150,
+    fit: dict,
+    min_pitches: int = 250,
+    min_swings: int = 100,
     top_n: int = 20,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Rank the largest over- and under-performers relative to their shape.
+    """Rank by what shape says that mean reversion does not already say.
 
-    The projected change is the gap scaled by the fraction of it that
-    historically reverses -- not the raw gap, which would overstate the move by
-    treating command and defence as if they were luck.
+    `shape_edge` is the full model's projection minus the naive one. A pitcher
+    appears here only when his pitch geometry disagrees with where his results
+    would drift anyway -- which is the only claim this analysis can make that a
+    simple regression-to-the-mean adjustment could not.
+
+    `min_swings` matters as much as `min_pitches`: whiff rate is computed over
+    swings, so a 150-pitch season can carry a 60-swing rate whose confidence
+    interval spans most of the league.
     """
-    gap_col, exp_col = f"{target}_gap", f"{target}_expected"
+    exp_col = f"{target}_expected"
     block = table[(table["game_year"] == season) & (table["n_pitches"] >= min_pitches)].copy()
-    block = block.dropna(subset=[gap_col, target])
+    if "n_swings" in block.columns and target == "whiff_rate":
+        block = block[block["n_swings"] >= min_swings]
+    block = block.dropna(subset=[exp_col, target])
+    if block.empty:
+        return block, block
 
-    block["projected_change"] = -block[gap_col] * reversal_fraction
-    block["projected_next"] = block[target] + block["projected_change"]
+    x_naive = block[[target]].to_numpy(dtype=float)
+    x_full = block[[target, exp_col]].to_numpy(dtype=float)
+    block["proj_naive"] = fit["naive"].predict(x_naive)
+    block["proj_full"] = fit["full"].predict(x_full)
+    block["shape_edge"] = block["proj_full"] - block["proj_naive"]
+    block["projected_change"] = block["proj_full"] - block[target]
 
     cols = [
         "player_name",
-        "pitcher",
         "n_pitches",
+        "n_swings",
         "release_speed",
         "ivb_in",
         "vaa_adj",
         target,
         exp_col,
-        gap_col,
-        "projected_change",
-        "projected_next",
+        "proj_naive",
+        "proj_full",
+        "shape_edge",
     ]
     cols = [c for c in cols if c in block.columns]
 
-    regression = block.nlargest(top_n, gap_col)[cols].reset_index(drop=True)
-    progression = block.nsmallest(top_n, gap_col)[cols].reset_index(drop=True)
+    # Positive shape_edge: geometry argues for MORE than mean reversion alone.
+    progression = block.nlargest(top_n, "shape_edge")[cols].reset_index(drop=True)
+    regression = block.nsmallest(top_n, "shape_edge")[cols].reset_index(drop=True)
     return regression, progression

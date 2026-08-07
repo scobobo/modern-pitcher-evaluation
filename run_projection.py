@@ -24,7 +24,7 @@ import features as feat
 from config import COMPLETE_SEASONS, OUTPUT_DIR
 from evaluation import adjust_vaa_for_height, pitcher_season_table
 from fetch import load_seasons
-from projection import fit_shape_expectation, measure_gap_reversal, rank_candidates
+from projection import fit_projection, fit_shape_expectation, measure_gap_reversal, rank_candidates
 
 log = logging.getLogger("projection")
 
@@ -38,14 +38,15 @@ def _fmt(df: pd.DataFrame, target: str) -> str:
         "release_speed": "velo",
         "ivb_in": "IVB",
         "vaa_adj": "VAAadj",
+        "n_swings": "sw",
         target: "actual",
         f"{target}_expected": "shape_exp",
-        f"{target}_gap": "gap",
-        "projected_change": "proj_chg",
-        "projected_next": "proj_next",
+        "proj_naive": "mean_rev",
+        "proj_full": "proj",
+        "shape_edge": "edge",
     }
     d = d[[c for c in rename if c in d.columns]].rename(columns=rename)
-    for c in ("actual", "shape_exp", "gap", "proj_chg", "proj_next"):
+    for c in ("actual", "shape_exp", "mean_rev", "proj", "edge"):
         if c in d.columns:
             d[c] = d[c].map(lambda v: f"{v:+.4f}" if pd.notna(v) else "")
     for c in ("velo", "IVB", "VAAadj"):
@@ -59,7 +60,7 @@ def main() -> None:
     ap.add_argument("--season", type=int, default=max(COMPLETE_SEASONS))
     ap.add_argument("--target", default="whiff_rate", choices=["whiff_rate", "run_value_pitcher"])
     ap.add_argument("--pitch-type", default="FF")
-    ap.add_argument("--min-pitches", type=int, default=150)
+    ap.add_argument("--min-pitches", type=int, default=250)
     ap.add_argument("--top", type=int, default=15)
     args = ap.parse_args()
 
@@ -112,23 +113,32 @@ def main() -> None:
         predictive = True
     print("=" * 78)
 
-    reversal = max(0.0, min(1.0, stats["reversal_fraction"]))
+    fit = fit_projection(complete, target=args.target)
+    print()
+    print("  Predicting next season from this season:")
+    print(f"    results alone            R2 = {fit['naive_r2']:.4f}")
+    print(f"    results + shape          R2 = {fit['full_r2']:.4f}")
+    print(f"    shape's incremental lift    = {fit['full_r2'] - fit['naive_r2']:+.4f}")
+    print("  Rankings below use only that incremental part, so mean reversion")
+    print("  -- which any extreme value shows regardless of shape -- is excluded.")
+    print("=" * 78)
+
     regression, progression = rank_candidates(
         table,
         season=args.season,
         target=args.target,
-        reversal_fraction=reversal,
+        fit=fit,
         min_pitches=args.min_pitches,
         top_n=args.top,
     )
 
     label = "predicted" if predictive else "descriptive only"
     print()
-    print(f"REGRESSION CANDIDATES — {args.season} {args.pitch_type}, results above what shape supports ({label})")
+    print(f"REGRESSION CANDIDATES — {args.season} {args.pitch_type}, shape argues for LESS than mean reversion ({label})")
     print("-" * 78)
     print(_fmt(regression, args.target))
     print()
-    print(f"PROGRESSION CANDIDATES — {args.season} {args.pitch_type}, shape better than results ({label})")
+    print(f"PROGRESSION CANDIDATES — {args.season} {args.pitch_type}, shape argues for MORE than mean reversion ({label})")
     print("-" * 78)
     print(_fmt(progression, args.target))
     print()
