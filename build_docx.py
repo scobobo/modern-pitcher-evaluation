@@ -362,6 +362,7 @@ def build() -> Path:
     bottom_border(meta)
     for line in (
         "Scott Luntz",
+        "August 2026",
         "7,483,321 pitches · 2015–2025 regular seasons",
         "Source: Statcast / Baseball Savant",
     ):
