@@ -467,6 +467,33 @@
   }
   footer.colophon p { max-width: 72ch; }
 
+  /* ---------- small screens ---------- */
+  @media (max-width: 680px) {
+    .sheet { padding-left: 1.05rem; padding-right: 1.05rem; }
+
+    /* Charts must not be shrunk to fit. A 720-unit viewBox squeezed into a
+       360px screen renders its 10px labels at about 5px, which is unreadable.
+       Hold a minimum drawing width and let the figure pan instead -- the
+       container is already overflow-x: auto. */
+    .fig-body svg { min-width: 560px; }
+    .panels { gap: 1.1rem; }
+    .fig-body, .tbl-scroll { -webkit-overflow-scrolling: touch; }
+
+    /* Tables: tighter cells, and let the label column wrap so a long pitcher
+       or metric name stops forcing the entire row wider. */
+    th, td { padding: 0.42rem 0.55rem; font-size: 0.76rem; }
+    th:first-child, td:first-child { white-space: normal; min-width: 7.5rem; }
+
+    /* A hairline on the right edge of scrollable blocks, so it reads as
+       pannable rather than clipped. */
+    .tbl-scroll, .fig-body { border-right: 2px solid var(--rule); }
+
+    pre { font-size: 0.72rem; padding: 0.8rem 0.85rem; }
+    blockquote, .plain, .caution, .tier { padding: 0.95rem 1rem; }
+    h1 { letter-spacing: -0.015em; }
+    .byline { gap: 0.35rem 1rem; }
+  }
+
   #tip {
     position: fixed;
     pointer-events: none;

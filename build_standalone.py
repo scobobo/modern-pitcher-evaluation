@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "paper.html"
@@ -26,6 +27,19 @@ SOCIAL_CARD = "social-card.png"
 # A folder that can be dropped straight onto a static host: index.html plus the
 # preview image the meta tags point at.
 DEPLOY_DIR = ROOT / "site"
+
+# The tab icon, inlined as a data URI rather than shipped as a separate file --
+# a second asset is one more thing to forget in a drag-and-drop deploy, and the
+# social card has already been lost that way once. The mark is the paper's own
+# motif: a ball flight arriving flat.
+FAVICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
+    '<rect width="32" height="32" rx="7" fill="#11161C"/>'
+    '<path d="M5 9C13 11 21 15 26.5 22.5" stroke="#1baf7a" stroke-width="3.2" '
+    'fill="none" stroke-linecap="round"/>'
+    '<circle cx="26.5" cy="22.5" r="3.4" fill="#1baf7a"/>'
+    "</svg>"
+)
 
 DESCRIPTION = (
     "A pitch-level study of 7.5 million Statcast pitches (2015-2025) showing that "
@@ -64,6 +78,8 @@ def main() -> None:
     if idx != -1:
         body = body[:idx] + PRINT_CSS + body[idx:]
 
+    favicon = "data:image/svg+xml," + quote(FAVICON_SVG, safe="")
+
     html = f"""<!doctype html>
 <html lang="en">
 <head>
@@ -72,6 +88,9 @@ def main() -> None:
 <title>{title}</title>
 <meta name="description" content="{DESCRIPTION}">
 <meta name="author" content="Scott Luntz">
+<link rel="icon" href="{favicon}">
+<link rel="apple-touch-icon" href="{favicon}">
+<meta name="theme-color" content="#11161C">
 <meta property="og:title" content="{title}">
 <meta property="og:description" content="{DESCRIPTION}">
 <meta property="og:type" content="article">
