@@ -20,3 +20,6 @@ The-Shape-of-the-Modern-Pitch.html
 
 # Assembled deploy folder — rebuilt by build_standalone.py
 site/
+
+# Generated PDF — rebuilt by build_pdf.sh
+Pitch-Shape-One-Pager.pdf
