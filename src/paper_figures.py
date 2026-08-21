@@ -271,3 +271,15 @@ def fig_social_card(path):
 
     fig.savefig(path, dpi=100, facecolor="#FFFFFF")
     plt.close(fig)
+
+    # Flatten to RGB. Matplotlib writes RGBA even when a solid facecolor is set,
+    # and LinkedIn's image processor frequently refuses PNGs carrying an alpha
+    # channel -- the link renders with no preview card at all, while the file
+    # itself serves correctly, which makes the cause hard to spot.
+    from PIL import Image
+
+    with Image.open(path) as im:
+        if im.mode != "RGB":
+            flat = Image.new("RGB", im.size, "#FFFFFF")
+            flat.paste(im, mask=im.split()[-1] if im.mode == "RGBA" else None)
+            flat.save(path, "PNG", optimize=True)
