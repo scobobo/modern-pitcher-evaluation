@@ -1,0 +1,460 @@
+<title>Pitch Shape Explorer</title>
+
+<style>
+  :root {
+    color-scheme: light;
+    --ground: #F4F6F8;
+    --sheet: #FFFFFF;
+    --panel: #FAFBFC;
+    --ink: #11161C;
+    --ink-2: #47525F;
+    --ink-3: #77828F;
+    --rule: #DDE2E8;
+    --rule-strong: #B7C0CB;
+    --accent: #0E7250;
+    --shape: #1baf7a;
+    --comp: #2a78d6;
+    --spin: #eb6834;
+    --neutral: #98A5B2;
+    --good: #1baf7a;
+    --bad: #d1553f;
+    --font-serif: ui-serif, "Iowan Old Style", "Charter", "Palatino Linotype", Palatino, Georgia, serif;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0D1115; --sheet: #151A20; --panel: #1A2027; --ink: #E7EDF3;
+      --ink-2: #AEBAC6; --ink-3: #838F9C; --rule: #262E37; --rule-strong: #3A4552;
+      --accent: #3FD09A; --shape: #2fc98d; --comp: #4a93e8; --spin: #e07142;
+      --neutral: #6C7885; --good: #2fc98d; --bad: #e0715c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0D1115; --sheet: #151A20; --panel: #1A2027; --ink: #E7EDF3;
+    --ink-2: #AEBAC6; --ink-3: #838F9C; --rule: #262E37; --rule-strong: #3A4552;
+    --accent: #3FD09A; --shape: #2fc98d; --comp: #4a93e8; --spin: #e07142;
+    --neutral: #6C7885; --good: #2fc98d; --bad: #e0715c;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--font-serif); font-size: 15px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 1.5rem 1.1rem 4rem; }
+
+  header { border-bottom: 2px solid var(--ink); padding-bottom: 0.9rem; margin-bottom: 1.1rem; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 0.45rem;
+  }
+  h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); margin: 0 0 0.4rem; font-weight: 600; letter-spacing: -0.015em; }
+  .sub { color: var(--ink-2); margin: 0; max-width: 76ch; font-size: 0.95rem; }
+
+  .note {
+    background: var(--panel); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+    padding: 0.7rem 0.9rem; margin: 1rem 0 1.2rem; font-size: 0.86rem; color: var(--ink-2);
+    max-width: 92ch;
+  }
+  .note strong { color: var(--ink); }
+
+  /* ---------- filters ---------- */
+  .filters {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+    gap: 0.85rem; background: var(--sheet); border: 1px solid var(--rule);
+    padding: 0.9rem 1rem; margin-bottom: 1.1rem;
+  }
+  .f label {
+    display: block; font-family: var(--font-mono); font-size: 0.63rem;
+    letter-spacing: 0.11em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 0.35rem;
+  }
+  .f .val { font-family: var(--font-mono); font-size: 0.78rem; color: var(--ink); font-weight: 600; }
+  select, input[type=range] { width: 100%; }
+  select {
+    font-family: var(--font-mono); font-size: 0.8rem; padding: 0.32rem 0.4rem;
+    background: var(--panel); color: var(--ink); border: 1px solid var(--rule-strong); border-radius: 3px;
+  }
+  input[type=range] { accent-color: var(--shape); margin: 0.25rem 0 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 0.28rem; }
+  .chip {
+    font-family: var(--font-mono); font-size: 0.7rem; padding: 0.22rem 0.5rem;
+    border: 1px solid var(--rule-strong); border-radius: 3px; background: var(--panel);
+    color: var(--ink-2); cursor: pointer; user-select: none;
+  }
+  .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--sheet); font-weight: 700; }
+  .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- stat tiles ---------- */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 0.7rem; margin-bottom: 1.2rem; }
+  .tile { background: var(--sheet); border: 1px solid var(--rule); border-top: 2.5px solid var(--neutral); padding: 0.6rem 0.75rem; }
+  .tile.k { border-top-color: var(--shape); }
+  .tile .n { font-family: var(--font-mono); font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; display: block; }
+  .tile .l { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-3); display: block; margin-top: 0.15rem; }
+
+  /* ---------- layout ---------- */
+  .grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 1.2rem; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .card { background: var(--sheet); border: 1px solid var(--rule); }
+  .card h2 {
+    font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.13em; text-transform: uppercase;
+    color: var(--accent); margin: 0; padding: 0.7rem 0.9rem 0.5rem; border-bottom: 1px solid var(--rule);
+  }
+  .card .body { padding: 0.85rem 0.9rem; }
+  .card .cap { font-size: 0.8rem; color: var(--ink-3); line-height: 1.4; padding: 0 0.9rem 0.85rem; }
+
+  canvas { display: block; width: 100%; height: auto; }
+
+  .tbl-scroll { overflow-x: auto; max-height: 460px; overflow-y: auto; }
+  table { border-collapse: collapse; width: 100%; font-family: var(--font-mono); font-size: 0.74rem; font-variant-numeric: tabular-nums; }
+  th, td { padding: 0.34rem 0.55rem; text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--sheet); }
+  thead th {
+    position: sticky; top: 0; background: var(--sheet); border-bottom: 1px solid var(--rule-strong);
+    color: var(--ink-2); font-weight: 600; font-size: 0.66rem; letter-spacing: 0.04em; cursor: pointer; z-index: 2;
+  }
+  thead th:first-child { z-index: 3; }
+  thead th:hover { color: var(--accent); }
+  tbody tr + tr td { border-top: 1px solid var(--rule); }
+  tbody tr:hover td { background: var(--panel); }
+  td.pos { color: var(--good); font-weight: 700; }
+  td.neg { color: var(--bad); font-weight: 700; }
+  .empty { padding: 2rem 1rem; text-align: center; color: var(--ink-3); font-family: var(--font-mono); font-size: 0.8rem; }
+
+  footer {
+    margin-top: 1.6rem; border-top: 1px solid var(--rule-strong); padding-top: 0.8rem;
+    font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-3);
+    display: flex; flex-wrap: wrap; gap: 0.3rem 1.3rem;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+  .mono { font-family: var(--font-mono); }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Pitch Shape Explorer · 7,483,321 tracked pitches</p>
+    <h1>Who is out-throwing their shape?</h1>
+    <p class="sub">Filter the pitcher-season population by year, age, pitch type, handedness, and volume. Every row is scored by the same validated model.</p>
+  </header>
+
+  <div class="note">
+    <strong>The model is fixed, not refit.</strong> Shape expectation and edge were fit once on complete seasons (2015–2025), out-of-fold and grouped by pitcher, then applied to every row. Filtering changes which rows you see, never what the model learned — otherwise each filtered view would be reporting a different, unvalidated model. <strong>Edge</strong> is what pitch shape predicts <em>beyond</em> ordinary regression to the mean: positive means the shape argues for better results than a simple mean-reversion forecast would give.
+  </div>
+
+  <div class="filters" id="filters">
+    <div class="f">
+      <label for="ptype">Pitch type</label>
+      <div class="chips" id="ptype"></div>
+    </div>
+    <div class="f">
+      <label for="yrFrom">Seasons <span class="val" id="yrVal"></span></label>
+      <input type="range" id="yrFrom" step="1">
+      <input type="range" id="yrTo" step="1">
+    </div>
+    <div class="f">
+      <label for="ageFrom">Age <span class="val" id="ageVal"></span></label>
+      <input type="range" id="ageFrom" step="1">
+      <input type="range" id="ageTo" step="1">
+    </div>
+    <div class="f">
+      <label for="minN">Min pitches <span class="val" id="minNVal"></span></label>
+      <input type="range" id="minN" min="150" max="1500" step="25">
+    </div>
+    <div class="f">
+      <label for="hand">Throws</label>
+      <div class="chips" id="hand"></div>
+    </div>
+    <div class="f">
+      <label for="sortBy">Rank by</label>
+      <select id="sortBy">
+        <option value="edge">Shape edge (best first)</option>
+        <option value="edge_asc">Shape edge (worst first)</option>
+        <option value="gap">Under-performing shape most</option>
+        <option value="gap_asc">Over-performing shape most</option>
+        <option value="whiff">Whiff rate</option>
+        <option value="velo">Velocity</option>
+        <option value="ivb">Induced vertical break</option>
+        <option value="vaa">Flattest approach angle</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Shape says / results say</h2>
+      <div class="body">
+        <canvas id="scatter" width="720" height="480" aria-label="Scatter plot of actual whiff rate against the whiff rate predicted from pitch shape alone."></canvas>
+      </div>
+      <p class="cap">Each point is one pitcher-season. The diagonal is parity. <span style="color:var(--comp);font-weight:700">Above</span> the line, results beat what the shape supports; <span style="color:var(--shape);font-weight:700">below</span>, the shape is better than the results. Distance from the line is the part that partly reverses.</p>
+    </div>
+
+    <div class="card">
+      <h2>Ranked <span id="rankCount" style="color:var(--ink-3)"></span></h2>
+      <div class="tbl-scroll">
+        <table id="tbl">
+          <thead><tr id="thead"></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <p class="cap">Click a column to sort. Edge is in whiff-rate points: <span class="mono">+0.02</span> means shape argues for two percentage points more than mean reversion alone predicts.</p>
+    </div>
+  </div>
+
+  <footer>
+    <span>Scott Luntz · <a href="mailto:scott.luntz@gmail.com">scott.luntz@gmail.com</a></span>
+    <span>Paper: <a href="https://the-shape-of-the-modern-pitch.netlify.app/">the-shape-of-the-modern-pitch.netlify.app</a></span>
+    <span>Code: <a href="https://github.com/scobobo/modern-pitcher-evaluation">github.com/scobobo/modern-pitcher-evaluation</a></span>
+    <span id="metaLine"></span>
+  </footer>
+</div>
+
+<script type="application/json" id="data">__DATA__</script>
+
+<script>
+(function () {
+  "use strict";
+  var payload = JSON.parse(document.getElementById("data").textContent);
+  var COLS = payload.columns, META = payload.meta;
+  var IDX = {}; COLS.forEach(function (c, i) { IDX[c] = i; });
+
+  // Row accessors by name, so the column order in the payload can change
+  // without every call site needing to know about it.
+  function g(row, key) { return row[IDX[key]]; }
+
+  var ROWS = payload.rows;
+  var years = ROWS.map(function (r) { return g(r, "yr"); });
+  var ages = ROWS.map(function (r) { return g(r, "age"); }).filter(function (a) { return a != null; });
+  var YR_MIN = Math.min.apply(null, years), YR_MAX = Math.max.apply(null, years);
+  var AGE_MIN = Math.min.apply(null, ages), AGE_MAX = Math.max.apply(null, ages);
+
+  var state = {
+    pt: ["FF"],
+    yrFrom: YR_MIN, yrTo: YR_MAX,
+    ageFrom: AGE_MIN, ageTo: AGE_MAX,
+    minN: 250,
+    hand: ["R", "L"],
+    sort: "edge"
+  };
+
+  // ---------- filter controls ----------
+  function buildChips(hostId, values, key) {
+    var host = document.getElementById(hostId);
+    host.innerHTML = "";
+    values.forEach(function (v) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "chip"; b.textContent = v;
+      b.setAttribute("aria-pressed", state[key].indexOf(v) > -1 ? "true" : "false");
+      b.addEventListener("click", function () {
+        var i = state[key].indexOf(v);
+        if (i > -1) { if (state[key].length > 1) state[key].splice(i, 1); }
+        else state[key].push(v);
+        b.setAttribute("aria-pressed", state[key].indexOf(v) > -1 ? "true" : "false");
+        render();
+      });
+      host.appendChild(b);
+    });
+  }
+  buildChips("ptype", META.pitch_types, "pt");
+  buildChips("hand", ["R", "L"], "hand");
+
+  function range(id, min, max, val, onChange) {
+    var el = document.getElementById(id);
+    el.min = min; el.max = max; el.value = val;
+    el.addEventListener("input", function () { onChange(+el.value); render(); });
+    return el;
+  }
+  var yrFromEl = range("yrFrom", YR_MIN, YR_MAX, state.yrFrom, function (v) {
+    state.yrFrom = Math.min(v, state.yrTo);
+    yrFromEl.value = state.yrFrom;
+  });
+  var yrToEl = range("yrTo", YR_MIN, YR_MAX, state.yrTo, function (v) {
+    state.yrTo = Math.max(v, state.yrFrom);
+    yrToEl.value = state.yrTo;
+  });
+  var ageFromEl = range("ageFrom", AGE_MIN, AGE_MAX, state.ageFrom, function (v) {
+    state.ageFrom = Math.min(v, state.ageTo);
+    ageFromEl.value = state.ageFrom;
+  });
+  var ageToEl = range("ageTo", AGE_MIN, AGE_MAX, state.ageTo, function (v) {
+    state.ageTo = Math.max(v, state.ageFrom);
+    ageToEl.value = state.ageTo;
+  });
+  range("minN", 150, 1500, state.minN, function (v) { state.minN = v; });
+  document.getElementById("sortBy").addEventListener("change", function (e) {
+    state.sort = e.target.value; render();
+  });
+
+  // ---------- filtering ----------
+  function filtered() {
+    return ROWS.filter(function (r) {
+      var yr = g(r, "yr"), age = g(r, "age");
+      return state.pt.indexOf(g(r, "pt")) > -1
+        && yr >= state.yrFrom && yr <= state.yrTo
+        && (age == null || (age >= state.ageFrom && age <= state.ageTo))
+        && g(r, "n") >= state.minN
+        && state.hand.indexOf(g(r, "hand")) > -1;
+    });
+  }
+
+  var SORTS = {
+    edge:     function (a, b) { return (g(b, "edge") || -9) - (g(a, "edge") || -9); },
+    edge_asc: function (a, b) { return (g(a, "edge") || 9) - (g(b, "edge") || 9); },
+    gap:      function (a, b) { return (g(a, "whiff") - g(a, "exp")) - (g(b, "whiff") - g(b, "exp")); },
+    gap_asc:  function (a, b) { return (g(b, "whiff") - g(b, "exp")) - (g(a, "whiff") - g(a, "exp")); },
+    whiff:    function (a, b) { return g(b, "whiff") - g(a, "whiff"); },
+    velo:     function (a, b) { return g(b, "velo") - g(a, "velo"); },
+    ivb:      function (a, b) { return g(b, "ivb") - g(a, "ivb"); },
+    vaa:      function (a, b) { return g(b, "vaa") - g(a, "vaa"); }
+  };
+
+  // ---------- rendering ----------
+  function mean(rows, key) {
+    var s = 0, n = 0;
+    rows.forEach(function (r) { var v = g(r, key); if (v != null) { s += v; n++; } });
+    return n ? s / n : null;
+  }
+  function fmt(v, dp) { return v == null ? "—" : v.toFixed(dp); }
+
+  function renderTiles(rows) {
+    var pitchers = {};
+    rows.forEach(function (r) { pitchers[g(r, "name")] = 1; });
+    var tiles = [
+      ["k", rows.length.toLocaleString(), "pitcher-seasons"],
+      ["k", Object.keys(pitchers).length.toLocaleString(), "pitchers"],
+      ["", fmt(mean(rows, "velo"), 1), "avg velo (mph)"],
+      ["", fmt(mean(rows, "ivb"), 1), "avg IVB (in)"],
+      ["", fmt(mean(rows, "vaa"), 2), "avg VAA adj (\u00B0)"],
+      ["", rows.length ? (100 * mean(rows, "whiff")).toFixed(1) + "%" : "—", "avg whiff rate"]
+    ];
+    document.getElementById("tiles").innerHTML = tiles.map(function (t) {
+      return '<div class="tile ' + t[0] + '"><span class="n">' + t[1] + '</span><span class="l">' + t[2] + "</span></div>";
+    }).join("");
+  }
+
+  var HEAD = [
+    ["name", "Pitcher"], ["yr", "Yr"], ["pt", "Pitch"], ["age", "Age"], ["hand", "T"],
+    ["n", "Pitches"], ["velo", "Velo"], ["ivb", "IVB"], ["vaa", "VAA"],
+    ["whiff", "Whiff"], ["exp", "Shape exp"], ["edge", "Edge"]
+  ];
+
+  function renderTable(rows) {
+    document.getElementById("thead").innerHTML = HEAD.map(function (h) {
+      return "<th data-k='" + h[0] + "'>" + h[1] + "</th>";
+    }).join("");
+    document.getElementById("rankCount").textContent = "\u00B7 " + rows.length.toLocaleString() + " rows";
+
+    var body = document.getElementById("tbody");
+    if (!rows.length) {
+      body.innerHTML = "<tr><td colspan='12'><div class='empty'>No pitcher-seasons match these filters.</div></td></tr>";
+      return;
+    }
+    body.innerHTML = rows.slice(0, 300).map(function (r) {
+      var edge = g(r, "edge");
+      var cls = edge == null ? "" : (edge > 0 ? "pos" : "neg");
+      return "<tr>"
+        + "<td>" + g(r, "name") + "</td>"
+        + "<td>" + g(r, "yr") + "</td>"
+        + "<td>" + g(r, "pt") + "</td>"
+        + "<td>" + (g(r, "age") == null ? "—" : g(r, "age")) + "</td>"
+        + "<td>" + g(r, "hand") + "</td>"
+        + "<td>" + g(r, "n").toLocaleString() + "</td>"
+        + "<td>" + fmt(g(r, "velo"), 1) + "</td>"
+        + "<td>" + fmt(g(r, "ivb"), 1) + "</td>"
+        + "<td>" + fmt(g(r, "vaa"), 2) + "</td>"
+        + "<td>" + (100 * g(r, "whiff")).toFixed(1) + "</td>"
+        + "<td>" + (g(r, "exp") == null ? "—" : (100 * g(r, "exp")).toFixed(1)) + "</td>"
+        + "<td class='" + cls + "'>" + (edge == null ? "—" : (edge > 0 ? "+" : "") + edge.toFixed(4)) + "</td>"
+        + "</tr>";
+    }).join("");
+  }
+
+  document.getElementById("thead").addEventListener("click", function (e) {
+    var k = e.target && e.target.getAttribute("data-k");
+    if (!k) return;
+    var map = { edge: "edge", whiff: "whiff", velo: "velo", ivb: "ivb", vaa: "vaa" };
+    if (map[k]) { state.sort = map[k]; document.getElementById("sortBy").value = map[k]; render(); }
+  });
+
+  function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  function renderScatter(rows) {
+    var cv = document.getElementById("scatter");
+    var dpr = window.devicePixelRatio || 1;
+    var cssW = cv.clientWidth || 720, cssH = Math.round(cssW * 0.66);
+    cv.width = cssW * dpr; cv.height = cssH * dpr;
+    cv.style.height = cssH + "px";
+    var ctx = cv.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    var pad = { l: 46, r: 12, t: 12, b: 38 };
+    var w = cssW - pad.l - pad.r, h = cssH - pad.t - pad.b;
+    var lo = 0, hi = 0.45;
+    function X(v) { return pad.l + (v - lo) / (hi - lo) * w; }
+    function Y(v) { return pad.t + h - (v - lo) / (hi - lo) * h; }
+
+    var rule = css("--rule"), ink3 = css("--ink-3");
+    ctx.strokeStyle = rule; ctx.lineWidth = 1;
+    ctx.font = "11px " + css("--font-mono").split(",")[0];
+    ctx.fillStyle = ink3;
+    [0, 0.1, 0.2, 0.3, 0.4].forEach(function (t) {
+      ctx.beginPath(); ctx.moveTo(pad.l, Y(t)); ctx.lineTo(pad.l + w, Y(t)); ctx.stroke();
+      ctx.textAlign = "right"; ctx.fillText((100 * t).toFixed(0) + "%", pad.l - 6, Y(t) + 4);
+      ctx.textAlign = "center"; ctx.fillText((100 * t).toFixed(0) + "%", X(t), pad.t + h + 16);
+    });
+
+    // parity line
+    ctx.strokeStyle = css("--rule-strong");
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(X(lo), Y(lo)); ctx.lineTo(X(hi), Y(hi)); ctx.stroke();
+    ctx.setLineDash([]);
+
+    var above = css("--comp"), below = css("--shape");
+    rows.forEach(function (r) {
+      var e = g(r, "exp"), a = g(r, "whiff");
+      if (e == null || a == null) return;
+      ctx.beginPath();
+      ctx.arc(X(e), Y(a), 2.6, 0, 6.2832);
+      ctx.fillStyle = a >= e ? above : below;
+      ctx.globalAlpha = rows.length > 2000 ? 0.28 : 0.55;
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = ink3; ctx.textAlign = "center";
+    ctx.fillText("whiff rate predicted from shape alone", pad.l + w / 2, cssH - 4);
+    ctx.save();
+    ctx.translate(12, pad.t + h / 2); ctx.rotate(-Math.PI / 2);
+    ctx.fillText("actual whiff rate", 0, 0);
+    ctx.restore();
+  }
+
+  function render() {
+    document.getElementById("yrVal").textContent = state.yrFrom === state.yrTo
+      ? state.yrFrom : state.yrFrom + "\u2013" + state.yrTo;
+    document.getElementById("ageVal").textContent = state.ageFrom === state.ageTo
+      ? state.ageFrom : state.ageFrom + "\u2013" + state.ageTo;
+    document.getElementById("minNVal").textContent = state.minN + "+";
+
+    var rows = filtered();
+    rows.sort(SORTS[state.sort] || SORTS.edge);
+    renderTiles(rows);
+    renderTable(rows);
+    renderScatter(rows);
+  }
+
+  document.getElementById("metaLine").textContent =
+    META.n_rows.toLocaleString() + " pitcher-seasons \u00B7 " + META.seasons[0] + "\u2013" + META.seasons[1]
+    + " (" + META.partial_season + " partial)";
+
+  window.addEventListener("resize", function () { renderScatter(filtered().sort(SORTS[state.sort] || SORTS.edge)); });
+  if (window.matchMedia) {
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+    if (mq.addEventListener) mq.addEventListener("change", render);
+  }
+  render();
+})();
+</script>

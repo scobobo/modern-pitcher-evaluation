@@ -23,3 +23,7 @@ site/
 
 # Generated PDF — rebuilt by build_pdf.sh
 Pitch-Shape-One-Pager.pdf
+
+# Built dashboard (data is embedded) — rebuilt by build_dashboard.py
+dashboard.html
+site-dashboard/
