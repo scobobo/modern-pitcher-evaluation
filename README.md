@@ -96,6 +96,10 @@ Results write to `output/` as CSV.
 The reporting function prints "hypothesis not supported" when the numbers say so.
 It was written before the results were known and was not adjusted afterward.
 
-## License
+## License and citation
 
-MIT — see [LICENSE](LICENSE).
+Code: MIT — see [LICENSE](LICENSE).
+
+Paper text and figures: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) © 2026 Scott Luntz.
+
+Archived code release: [10.5281/zenodo.22037409](https://doi.org/10.5281/zenodo.22037409)

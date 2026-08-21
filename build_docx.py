@@ -1043,6 +1043,10 @@ def build() -> Path:
     para(doc, "Reporting standard. No result is described as real below t = 2 on its paired fold "
               "differences. Section 6 lists every finding that constrains the thesis, including one "
               "that overturned an earlier version of it.", size=8.5, color=INK2)
+    para(doc, "Copyright and licence. © 2026 Scott Luntz. The text and figures of this paper are "
+              "licensed under CC BY 4.0 (creativecommons.org/licenses/by/4.0/) — reuse and adaptation "
+              "are permitted with attribution. The analysis code is separately licensed under MIT. "
+              "Code archive: doi.org/10.5281/zenodo.22037409", size=8.5, color=INK2)
 
     doc.save(OUTPUT)
     return OUTPUT
