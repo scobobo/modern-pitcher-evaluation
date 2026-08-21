@@ -1,0 +1,344 @@
+<title>Pitch Shape One-Pager</title>
+
+<style>
+  :root {
+    color-scheme: light;
+    --ground: #F5F6F8;
+    --sheet: #FFFFFF;
+    --ink: #11161C;
+    --ink-2: #47525F;
+    --ink-3: #6E7A88;
+    --rule: #DCE1E7;
+    --rule-strong: #B7C0CB;
+    --accent: #0E7250;
+    --shape: #1baf7a;
+    --comp: #2a78d6;
+    --spin: #eb6834;
+    --neutral: #98A5B2;
+    --band: #F2F5F8;
+    --accent-band: #E8F4EE;
+    --font-serif: ui-serif, "Iowan Old Style", "Charter", "Palatino Linotype", Palatino, Georgia, serif;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Cascadia Mono", Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0E1216; --sheet: #161B21; --ink: #E7EDF3; --ink-2: #AEBAC6;
+      --ink-3: #8593A1; --rule: #28313A; --rule-strong: #3B4653; --accent: #3FD09A;
+      --shape: #199e70; --comp: #3987e5; --spin: #d95926; --neutral: #6C7885;
+      --band: #1B2128; --accent-band: #10281F;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1216; --sheet: #161B21; --ink: #E7EDF3; --ink-2: #AEBAC6;
+    --ink-3: #8593A1; --rule: #28313A; --rule-strong: #3B4653; --accent: #3FD09A;
+    --shape: #199e70; --comp: #3987e5; --spin: #d95926; --neutral: #6C7885;
+    --band: #1B2128; --accent-band: #10281F;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-serif);
+    font-size: 10.2pt;
+    line-height: 1.42;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sheet {
+    background: var(--sheet);
+    max-width: 8.5in;
+    margin: 0 auto;
+    padding: 0.5in 0.55in;
+    border: 1px solid var(--rule);
+  }
+
+  /* ---------- masthead ---------- */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 6.6pt;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 5px;
+  }
+  h1 {
+    font-size: 21pt;
+    line-height: 1.05;
+    letter-spacing: -0.015em;
+    margin: 0 0 5px;
+    font-weight: 600;
+  }
+  .deck {
+    font-size: 10.6pt;
+    color: var(--ink-2);
+    line-height: 1.35;
+    margin: 0 0 8px;
+    max-width: 58ch;
+  }
+  .byline {
+    font-family: var(--font-mono);
+    font-size: 7pt;
+    color: var(--ink-3);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px 14px;
+    border-top: 1px solid var(--rule);
+    border-bottom: 2px solid var(--ink);
+    padding: 5px 0;
+    margin-bottom: 11px;
+  }
+
+  h2 {
+    font-family: var(--font-mono);
+    font-size: 7.2pt;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 6px;
+    font-weight: 700;
+  }
+  section { margin-bottom: 11px; }
+  p { margin: 0 0 6px; }
+  strong { font-weight: 700; }
+
+  /* ---------- headline numbers ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .stat {
+    border: 1px solid var(--rule);
+    border-top: 2.5px solid var(--shape);
+    padding: 7px 9px 8px;
+    background: var(--band);
+  }
+  .stat.two { border-top-color: var(--spin); }
+  .stat.three { border-top-color: var(--comp); }
+  .stat .num {
+    font-family: var(--font-mono);
+    font-size: 17pt;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    line-height: 1;
+    display: block;
+    margin-bottom: 3px;
+  }
+  .stat .lab {
+    font-size: 8.6pt;
+    color: var(--ink-2);
+    line-height: 1.28;
+    display: block;
+  }
+
+  /* ---------- two-column body ---------- */
+  .cols {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 16px;
+  }
+
+  /* ---------- triage ---------- */
+  .tier {
+    border-left: 3px solid var(--shape);
+    background: var(--band);
+    padding: 6px 9px;
+    margin-bottom: 6px;
+  }
+  .tier.mid { border-left-color: var(--comp); }
+  .tier.full { border-left-color: var(--neutral); }
+  .tier .when {
+    font-family: var(--font-mono);
+    font-size: 7pt;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: block;
+  }
+  .tier .do { font-weight: 700; font-size: 9.6pt; display: block; margin: 1px 0 2px; }
+  .tier .why { font-size: 8.8pt; color: var(--ink-2); line-height: 1.32; display: block; }
+
+  /* ---------- limits ---------- */
+  .limits { border: 1px solid var(--rule-strong); padding: 7px 10px; background: var(--sheet); }
+  .limits ul { margin: 0; padding-left: 15px; }
+  .limits li { margin-bottom: 4px; font-size: 8.9pt; color: var(--ink-2); line-height: 1.34; }
+  .limits li:last-child { margin-bottom: 0; }
+  .limits li strong { color: var(--ink); }
+
+  /* ---------- chart ---------- */
+  figure { margin: 0; }
+  svg { display: block; width: 100%; height: auto; }
+  svg text { font-family: var(--font-mono); fill: var(--ink-2); }
+  figcaption {
+    font-size: 7.8pt;
+    color: var(--ink-3);
+    line-height: 1.3;
+    margin-top: 3px;
+  }
+
+  .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  footer {
+    border-top: 2px solid var(--ink);
+    margin-top: 10px;
+    padding-top: 6px;
+    font-family: var(--font-mono);
+    font-size: 7.2pt;
+    color: var(--ink-3);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px 16px;
+    justify-content: space-between;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer .grp { display: flex; gap: 16px; flex-wrap: wrap; }
+
+  @media print {
+    @page { size: letter portrait; margin: 0.38in; }
+    body { background: #fff; font-size: 9.6pt; }
+    .sheet { border: 0; padding: 0; max-width: none; }
+    section { margin-bottom: 9px; }
+    .stat .num { font-size: 16pt; }
+    h1 { font-size: 20pt; }
+  }
+
+  @media (max-width: 720px) {
+    .cols { grid-template-columns: 1fr; gap: 11px; }
+    .stats { grid-template-columns: 1fr; }
+    .sheet { padding: 0.9rem; }
+  }
+</style>
+
+<div class="sheet">
+
+  <p class="eyebrow">Pitcher evaluation · 7,483,321 tracked pitches · 2015–2025</p>
+  <h1>The Shape of the Modern Pitch</h1>
+  <p class="deck">Ball-flight geometry, not velocity and not spin rate, is the pitch property that carries information about outcomes. It is also the only one measured well enough to judge a pitcher on a small sample.</p>
+  <div class="byline">
+    <span>Scott Luntz · August 2026</span>
+    <span>Statcast / Baseball Savant</span>
+    <span>Every result reproducible from public data</span>
+    <span class="mono">DOI 10.5281/zenodo.22037431</span>
+  </div>
+
+  <section>
+    <h2>The finding</h2>
+    <div class="stats">
+      <div class="stat">
+        <span class="num">4.5×</span>
+        <span class="lab"><strong>Shape beats velocity.</strong> Movement and approach angle explain 4.5× more variation in run value than release speed does.</span>
+      </div>
+      <div class="stat two">
+        <span class="num">0.00</span>
+        <span class="lab"><strong>Spin adds nothing.</strong> Once velocity is partialled out, residual spin contributes nothing measurable, even given first claim on shared variance.</span>
+      </div>
+      <div class="stat three">
+        <span class="num">0.99<span style="font-size:11pt;color:var(--ink-3)"> vs </span>0.20</span>
+        <span class="lab"><strong>Shape is measured; results are sampled.</strong> Split-half reliability of shape versus run value per pitch.</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="cols">
+    <div>
+      <section>
+        <h2>Why it changes a decision</h2>
+        <p>Shape is a near-deterministic property of how a pitcher throws, so it is known almost exactly from the first pitch. Results are a sample, and at small volume they are mostly luck.</p>
+        <p>That creates a crossover. <strong>Below roughly 80 pitches of a given pitch type, a pitcher's ball flight predicts his next season better than his own results do.</strong> Above it, results win and keep pulling away.</p>
+        <p>The window below that line is exactly where evaluation is hardest and most expensive to get wrong: the callup, the waiver claim, the deadline target you have seen twice, the arm that just added a pitch.</p>
+      </section>
+
+      <section>
+        <h2>What it does not claim</h2>
+        <div class="limits">
+          <ul>
+            <li><strong>Command outranks shape ~50:1.</strong> Location is the dominant term in any pitch outcome. Shape sets the ceiling; command determines how much of it is reached.</li>
+            <li><strong>Shape does not replace results on full seasons.</strong> At 500 pitches, past results predict next-season whiff rate at <span class="mono">R² 0.362</span> against shape's <span class="mono">0.188</span>.</li>
+            <li><strong>The study rejected its own starting hypothesis</strong> — that spin had displaced velocity — and narrowed the surviving claim twice more. All three reversals are documented in the paper.</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    <div>
+      <section>
+        <h2>How to use it</h2>
+        <div class="tier">
+          <span class="when">Under ~80 pitches seen</span>
+          <span class="do">Read the shape. Discount the results.</span>
+          <span class="why">Rank IVB, height-adjusted VAA, and horizontal break against the league distribution for that pitch type. The outcome line is close to uninformative here.</span>
+        </div>
+        <div class="tier mid">
+          <span class="when">~80 to 400 pitches</span>
+          <span class="do">Blend, and read the disagreement.</span>
+          <span class="why">Elite shape with poor results is usually a command or sequencing problem, which is coachable. Ordinary shape with strong results is the profile most likely to regress.</span>
+        </div>
+        <div class="tier full">
+          <span class="when">Full season and beyond</span>
+          <span class="do">Lead with results. Keep shape as the alarm.</span>
+          <span class="why">Because shape is measured exactly, a two-inch drop in IVB or a flattening release shows up in a single outing, long before results move.</span>
+        </div>
+      </section>
+
+      <section>
+        <h2>The crossover</h2>
+        <figure>
+          <svg viewBox="0 0 400 168" role="img" aria-label="Line chart. Shape-based prediction of next-season whiff rate stays flat near 0.19 from 30 to 500 pitches, while prediction from past results rises from 0.09 to 0.36, crossing at about 80 pitches.">
+            <line x1="40" y1="14" x2="386" y2="14" stroke="var(--rule)" stroke-width="1"></line>
+            <line x1="40" y1="58" x2="386" y2="58" stroke="var(--rule)" stroke-width="1"></line>
+            <line x1="40" y1="102" x2="386" y2="102" stroke="var(--rule)" stroke-width="1"></line>
+            <line x1="40" y1="146" x2="386" y2="146" stroke="var(--rule-strong)" stroke-width="1"></line>
+            <line x1="40" y1="14" x2="40" y2="146" stroke="var(--rule-strong)" stroke-width="1"></line>
+
+            <text x="34" y="17" text-anchor="end" font-size="7">.40</text>
+            <text x="34" y="61" text-anchor="end" font-size="7">.27</text>
+            <text x="34" y="105" text-anchor="end" font-size="7">.13</text>
+            <text x="34" y="149" text-anchor="end" font-size="7">0</text>
+
+            <line x1="121" y1="14" x2="121" y2="146" stroke="var(--rule-strong)" stroke-width="1" stroke-dasharray="3 3"></line>
+            <text x="126" y="26" font-size="7.5" fill="var(--ink-2)">crossover ≈ 80 pitches</text>
+
+            <polyline points="40,84 125,82 216,82 302,79 386,84" fill="none" stroke="var(--shape)" stroke-width="2.4"></polyline>
+            <polyline points="40,115 125,93 216,64 302,40 386,26" fill="none" stroke="var(--comp)" stroke-width="2.4"></polyline>
+
+            <circle cx="40" cy="84" r="3.2" fill="var(--shape)"></circle>
+            <circle cx="125" cy="82" r="3.2" fill="var(--shape)"></circle>
+            <circle cx="216" cy="82" r="3.2" fill="var(--shape)"></circle>
+            <circle cx="302" cy="79" r="3.2" fill="var(--shape)"></circle>
+            <circle cx="386" cy="84" r="3.2" fill="var(--shape)"></circle>
+            <circle cx="40" cy="115" r="3.2" fill="var(--comp)"></circle>
+            <circle cx="125" cy="93" r="3.2" fill="var(--comp)"></circle>
+            <circle cx="216" cy="64" r="3.2" fill="var(--comp)"></circle>
+            <circle cx="302" cy="40" r="3.2" fill="var(--comp)"></circle>
+            <circle cx="386" cy="26" r="3.2" fill="var(--comp)"></circle>
+
+            <text x="52" y="76" font-size="7.5" fill="var(--shape)" font-weight="700">ball flight</text>
+            <text x="300" y="20" font-size="7.5" fill="var(--comp)" font-weight="700" text-anchor="end">past results</text>
+
+            <text x="40" y="158" font-size="7" text-anchor="middle">30</text>
+            <text x="125" y="158" font-size="7" text-anchor="middle">60</text>
+            <text x="216" y="158" font-size="7" text-anchor="middle">125</text>
+            <text x="302" y="158" font-size="7" text-anchor="middle">250</text>
+            <text x="386" y="158" font-size="7" text-anchor="middle">500</text>
+          </svg>
+          <figcaption>Out-of-sample R² predicting next season's whiff rate, by how many four-seamers were observed. Each point is built from exactly that many pitches. Shape is flat because it is measured without error; results start near-useless and improve as the sample accumulates.</figcaption>
+        </figure>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <span class="grp">
+      <span>Full paper: <a href="https://the-shape-of-the-modern-pitch.netlify.app/">the-shape-of-the-modern-pitch.netlify.app</a></span>
+      <span>Code: <a href="https://github.com/scobobo/modern-pitcher-evaluation">github.com/scobobo/modern-pitcher-evaluation</a></span>
+    </span>
+    <span>© 2026 Scott Luntz · CC BY 4.0</span>
+  </footer>
+
+</div>
