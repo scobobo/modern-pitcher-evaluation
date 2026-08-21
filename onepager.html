@@ -198,6 +198,10 @@
   }
   footer a { color: var(--accent); text-decoration: none; }
   footer .grp { display: flex; gap: 16px; flex-wrap: wrap; }
+  /* The contact row carries the ink weight: this page is meant to be forwarded,
+     and whoever it lands on needs a way back to the author. */
+  footer .contact { color: var(--ink); font-size: 7.8pt; }
+  footer .contact strong { letter-spacing: 0.02em; }
 
   @media print {
     @page { size: letter portrait; margin: 0.38in; }
@@ -263,6 +267,12 @@
             <li><strong>The study rejected its own starting hypothesis</strong> — that spin had displaced velocity — and narrowed the surviving claim twice more. All three reversals are documented in the paper.</li>
           </ul>
         </div>
+      </section>
+
+      <section>
+        <h2>Also built</h2>
+        <p>A leaderboard that flags regression and progression candidates from the gap between a pitcher's results and what his pitch shape supports, ranked by what shape adds <em>beyond</em> ordinary mean reversion.</p>
+        <p>Validated by walk-forward backtest across <span class="mono">1,413</span> out-of-sample pitcher-seasons, refitting on prior seasons only. Shape lifts R² over mean reversion in seven of eight seasons, and the top edge decile beats the bottom by <span class="mono">2.5</span> percentage points of realised whiff rate.</p>
       </section>
     </div>
 
@@ -334,11 +344,16 @@
   </div>
 
   <footer>
-    <span class="grp">
-      <span>Full paper: <a href="https://the-shape-of-the-modern-pitch.netlify.app/">the-shape-of-the-modern-pitch.netlify.app</a></span>
-      <span>Code: <a href="https://github.com/scobobo/modern-pitcher-evaluation">github.com/scobobo/modern-pitcher-evaluation</a></span>
+    <span class="grp contact">
+      <span><strong>Scott Luntz</strong></span>
+      <span><a href="mailto:scott.luntz@gmail.com">scott.luntz@gmail.com</a></span>
+      <span><a href="https://www.linkedin.com/in/scott-luntz-a1b3a6142/">linkedin.com/in/scott-luntz</a></span>
     </span>
-    <span>© 2026 Scott Luntz · CC BY 4.0</span>
+    <span class="grp">
+      <span>Paper: <a href="https://the-shape-of-the-modern-pitch.netlify.app/">the-shape-of-the-modern-pitch.netlify.app</a></span>
+      <span>Code: <a href="https://github.com/scobobo/modern-pitcher-evaluation">github.com/scobobo/modern-pitcher-evaluation</a></span>
+      <span>CC BY 4.0</span>
+    </span>
   </footer>
 
 </div>
