@@ -22,7 +22,10 @@ OUTPUT = ROOT / "The-Shape-of-the-Modern-Pitch.html"
 # Where the paper is hosted. Open Graph images must be absolute URLs -- a
 # relative path renders no preview card at all on LinkedIn, X, or Slack.
 SITE_URL = "https://the-shape-of-the-modern-pitch.netlify.app"
-SOCIAL_CARD = "social-card.png"
+# JPEG, and a filename LinkedIn has not seen before: its Open Graph cache is
+# sticky, and a URL it once scraped while the image was missing keeps
+# returning no card even after the image is fixed.
+SOCIAL_CARD = "social-card-v2.jpg"
 
 # A folder that can be dropped straight onto a static host: index.html plus the
 # preview image the meta tags point at.
@@ -95,7 +98,7 @@ def main() -> None:
 <meta property="og:description" content="{DESCRIPTION}">
 <meta property="og:type" content="article">
 <meta property="og:url" content="{SITE_URL}/">
-<meta property="og:image" content="{SITE_URL}/{SOCIAL_CARD}">
+<meta name="image" property="og:image" content="{SITE_URL}/{SOCIAL_CARD}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Chart: below about 80 pitches, a pitcher's ball flight predicts his next season better than his own results do.">
