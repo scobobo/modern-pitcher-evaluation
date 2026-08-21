@@ -409,11 +409,7 @@ def build() -> Path:
               "spinning. Velocity is intuitive. Spin rate arrived with Statcast in 2015, was quickly "
               "attached to the idea of a “rising” fastball, and became shorthand for pitch quality — "
               "a high-spin arm was a good arm.")
-    para(doc, "Both framings are wrong in an instructive way. Neither velocity nor spin acts on a "
-              "hitter directly. A hitter cannot perceive revolutions per minute. What he perceives is "
-              "a trajectory: where the ball appears to be going, how it deviates from that path, and "
-              "at what angle it arrives. Velocity and spin matter only insofar as they produce that "
-              "trajectory.")
+    para(doc, "While velocity and spin are undoubtedly important properties of any pitch, neither alone instructs a hitter on how to respond. A hitter cannot perceive in real time revolutions per minute, or the difference between a 93 and 95 mph fastball. What he perceives is the trajectory: where the ball appears to be going, how it deviates from the expected path, and at what angle it arrives. Velocity and spin matter only insofar as they produce that trajectory.")
     rich(doc, [
         ("This study asks the question in the form that can actually be answered. Rather than asking "
          "whether spin “matters,” which is unanswerable because spin correlates with everything else "
@@ -424,16 +420,11 @@ def build() -> Path:
          "shape is a near-deterministic property of how a pitcher throws, it is knowable from a "
          "handful of pitches, at a point when every outcome statistic is still noise.", ""),
     ])
-    para(doc, "I have tried to write this so it can be checked and so it can be disbelieved. Section 6 "
-              "collects the results that constrain the thesis, including one that contradicts its "
-              "strongest form. The code and the exact commands that produce every number are in "
-              "Section 9.")
+    para(doc, "I have attempted to write this so it can be readily fact-checked and discredited, if need be. Section 6 collects the results that constrain the thesis, including one that contradicts its strongest form. The code and the exact commands that produce every number are in Section 9.")
 
     # ---------------- 2 ----------------
     heading(doc, "2", "Definitions")
-    para(doc, "Four measurements do most of the work in this paper. Each is defined technically and "
-              "then in plain language, because the technical definitions are precise and the plain "
-              "ones are what the technical definitions actually mean.")
+    para(doc, "This paper largely revolves around findings related to four pitch properties. Each is defined technically, for precision, and then again in plain language, for clarity.")
 
     heading(doc, "2.1", "Induced vertical break (IVB)", level=2)
     para(doc, "The vertical deviation of the pitch, in inches, from the path a spinless ball thrown on "
@@ -456,15 +447,10 @@ def build() -> Path:
           "upward through the zone. A pitch that arrives ", ""), ("flat", "i"),
          (" — descending at, say, 4° instead of 6° — meets that swing plane at an awkward angle and "
           "gets missed or hit under. This is the real mechanism behind “the high fastball plays.”", "")],
-        "Crucially, VAA is not the same as throwing high in the zone. Two pitchers can put the ball in "
-        "the identical spot and arrive at different angles, because of how tall they are, how far down "
-        "the mound they release, and how much the ball carried on the way. That difference is the part "
-        "that belongs to the pitcher."])
+        "Crucially, VAA is not as simple as merely throwing high in the zone. Two pitchers can put the ball in identical spots but arrive at different angles, because of how tall they are, how far down the mound they release, and how much the ball carried on the way. Those factors contextualise the pitch, and they are the part that belongs to the pitcher."])
 
     heading(doc, "2.3", "Horizontal break (HB)", level=2)
-    para(doc, "Spin-induced horizontal deviation in inches, mirrored by handedness so that positive "
-              "values always mean arm-side movement — otherwise right- and left-handed pitchers cancel "
-              "each other out in any pooled model.")
+    para(doc, "Spin-induced horizontal deviation in inches, mirrored by handedness so that positive values always mean arm-side movement — otherwise right and left-handed pitchers cancel each other out in any pooled model.")
 
     heading(doc, "2.4", "Residual spin rate", level=2)
     para(doc, "Raw spin rate with the component linearly predictable from release velocity removed, "
@@ -490,17 +476,9 @@ def build() -> Path:
     rich(doc, [("The sample is every pitch tracked in the regular seasons of 2015 through 2025, pulled "
                 "from Baseball Savant: ", ""), ("7,483,321 pitches", "b"),
                (". Run value is present on 99.5–99.8% of rows in every season.", "")])
-    para(doc, "Cleaning removes pitches missing tracking fields and physically impossible readings "
-              "(release speed outside 60–108 mph, spin outside 500–3600 rpm), retaining roughly 92% of "
-              "pitches. The primary analysis uses four-seam fastballs — the pitch where claims about "
-              "spin are most often made — with all seven modelled pitch types examined separately in "
-              "Section 5.4.")
-    para(doc, "The 2026 season is deliberately excluded. It was in progress at the time of writing, and a "
-              "partial season would enter the per-season trend analysis in §5.7 on different terms from "
-              "the eleven complete seasons around it.")
-    para(doc, "Spin measurement changed from Trackman to Hawk-Eye before the 2020 season. Values either "
-              "side of that boundary are not perfectly comparable, so per-season models are fit "
-              "separately and never pooled across it.")
+    para(doc, "Cleaning removes pitches missing tracking fields and physically impossible readings (release speed outside 60–108 mph, spin outside 500–3600 rpm), retaining roughly 92% of pitches. The primary analysis uses four-seam fastballs — the pitch where spin most dominates the discussion — with all seven modelled pitch types examined separately in Section 5.4.")
+    para(doc, "The 2026 season is deliberately excluded. Given that it was in progress at the time of writing, a partial season would skew the per-season trend analysis in §5.7 with incomplete data.")
+    para(doc, "Spin measurement changed from Trackman to Hawk-Eye before the 2020 season. Values on either side of that boundary are not perfectly comparable, and as a result, per-season models are fit separately and never pooled across it.")
     para(doc, "The outcome variable is run value from the pitcher's perspective: the change in run "
               "expectancy attributable to the pitch, sign-flipped so positive always means good for the "
               "pitcher. A secondary outcome is whiff rate on swings. Both are used because they answer "
@@ -525,8 +503,7 @@ def build() -> Path:
                ("is", "i"), (" the collinearity.", "")])
 
     heading(doc, "4.2", "Guarding against leakage and self-deception", level=2)
-    para(doc, "Four design choices do the real work, and each exists because its absence produces a "
-              "wrong answer:")
+    para(doc, "Four design choices do the real work, and each exists because its absence paints an incomplete picture:")
     bullets(doc, [
         [("Folds are grouped by pitcher.", "b"), (" With random pitch-level splits, the same pitcher's "
          "fastballs appear in both training and test data, and the model memorises the arm instead of "
@@ -549,14 +526,13 @@ def build() -> Path:
     rich(doc, [("To test this, VAA is regressed on plate height (quadratic, within season and pitch "
                 "type) and the residual retained — how flat the pitch arrived ", ""),
                ("relative to other pitches at the same height", "i"),
-               (". Every result in Sections 5.3 through 5.6 uses this height-adjusted version.", "")])
+               (". Every result in Sections 5.4 through 5.6 uses this height-adjusted version.", "")])
 
     # ---------------- 5 ----------------
     heading(doc, "5", "Results")
 
     heading(doc, "5.1", "Attribution at the pitch level", level=2)
-    para(doc, "On four-seam fastballs, with folds grouped by pitcher and gains paired across identical "
-              "folds, shape is the only block that meaningfully moves the model.")
+    para(doc, "On four-seam fastballs, with folds grouped by pitcher and gains paired across identical folds, shape is the only block that meaningfully influences the model.")
     figure(doc, figs["ladder"], 2,
            "Unique out-of-sample explanatory power added by each block.",
            "Each block is added on top of all previous blocks, so the bar is that block's unique "
@@ -616,9 +592,7 @@ def build() -> Path:
                 "as signal. Shape is a property of the pitcher, not of his aim.", "")])
 
     heading(doc, "5.4", "The result generalises to every pitch type", level=2)
-    para(doc, "Sceptics of fastball-only findings are right to be sceptical, since spin means opposite "
-              "things on a four-seamer and a curveball. The ladder was therefore refit independently on "
-              "all seven pitch types with adequate sample.")
+    para(doc, "Skeptics of fastball-only findings are right to be skeptical, since the meaning of spin is at odds on a four-seamer and a curveball. The ladder was therefore refit independently on all seven pitch types with adequate sample.")
     table(doc, 3, "Incremental CV R² by pitch type (t-statistic in parentheses)",
           ["Pitch", "RV: Velo", "RV: Spin", "RV: Shape", "Whiff: Velo", "Whiff: Spin", "Whiff: Shape"],
           [
@@ -719,9 +693,7 @@ def build() -> Path:
 
     # ---------------- 6 ----------------
     heading(doc, "6", "Threats to validity, and where the thesis had to be revised")
-    para(doc, "This section exists because a paper that only reports its confirmations is advertising. "
-              "Three findings below genuinely constrain the argument, and the first two forced me to "
-              "narrow it.")
+    para(doc, "This section exists because a paper that only reports confirmations of its hypothesis lacks credibility. Three findings below genuinely constrain the argument, and the first two forced me to narrow it.")
 
     heading(doc, "6.1", "Command dwarfs everything, including shape", level=2)
     rich(doc, [("In permutation importance on run value, distance from the middle of the zone scores ", ""),
@@ -813,23 +785,18 @@ def build() -> Path:
          ["Applies to: a prospect's first look, a reliever early in the year, a pitcher who has just "
           "added or redesigned a pitch, a rehab assignment, a trade-deadline target you have limited "
           "recent data on.",
-          "At this sample, his results carry roughly half the information his ball flight does. Whiff "
-          "rate, ERA, and run value are all still dominated by luck. Shape, by contrast, is already "
-          "fully measured — IVB and VAA are as knowable after 30 pitches as after 3,000.",
+          "At this sample, his results carry roughly half the informational value his ball flight does. Whiff rate, ERA, and run value are all still inconclusive at this point. Shape, by contrast, is already fully measured — IVB and VAA are as knowable after 30 pitches as after 3,000.",
           [("What to do: ", "b"), ("rank the pitch on IVB, height-adjusted VAA, and horizontal break "
            "against the league distribution for that pitch type. Treat the outcome line as essentially "
            "uninformative.", "")]], "1BAF7A"),
         ("ROUGHLY 80 TO 400 PITCHES", "Blend, weighting results upward as they accumulate.",
-         ["Results have overtaken shape but have not run away with it, and the combination beats either "
-          "alone by a wide margin — at 250 pitches, shape plus results predicts next season 14% better "
-          "than results alone.",
+         ["Results have overtaken shape but have not rendered it obsolete, and the combination beats either alone by a wide margin — at 250 pitches, shape plus results predicts next season 14% better than results alone.",
           [("What to do: ", "b"), ("use both. Where they disagree, the disagreement is the signal: a "
            "pitcher with elite shape and poor results in this window is usually a command or sequencing "
            "problem, which is a coachable problem. The reverse — ordinary shape, excellent results — is "
            "the profile most likely to regress.", "")]], "2A78D6"),
         ("FULL SEASON AND BEYOND", "Lead with results. Use shape to explain and to forecast change.",
-         ["With 500+ pitches, his own outcomes are the better single predictor and it is not close. "
-          "Shape's role shifts from estimating talent to explaining it and detecting change.",
+         ["With 500+ pitches, a pitcher's in-game outcomes are the better single predictor, and it is not close. Shape's role shifts from estimating talent to explaining it and predicting change.",
           [("What to do: ", "b"), ("lead with the outcome measures, but keep shape in the model — it "
            "still adds. Use shape as the early-warning system: because it is measured exactly, a "
            "two-inch drop in IVB or a flattening release is visible in a single outing, long before it "
@@ -921,19 +888,8 @@ def build() -> Path:
 
     # ---------------- 8 ----------------
     heading(doc, "8", "Conclusion")
-    para(doc, "The industry spent a decade organising pitcher evaluation around two numbers that are one "
-              "step removed from the thing that actually happens. Velocity and spin are inputs to a "
-              "trajectory; the trajectory is what a hitter faces. Measuring the trajectory directly — "
-              "induced vertical break, horizontal break, and the angle at which the ball arrives — "
-              "explains four and a half times more variation in run value than velocity does, and "
-              "residual spin adds nothing at all once movement is visible.")
-    para(doc, "But the more useful finding is about measurement error rather than effect size. Shape is "
-              "a property; results are a sample. A pitcher's induced vertical break is known almost "
-              "exactly after thirty pitches, while his run value is barely known after a full season. "
-              "That asymmetry, not the size of any coefficient, is what should change how pitchers are "
-              "evaluated — and it changes it most precisely where evaluation is hardest and most "
-              "valuable: the prospect, the callup, the new pitch, the trade target with sixty pitches "
-              "of recent data.")
+    para(doc, "The industry spent a decade organizing pitcher evaluation around two numbers that are one step removed from the property that actually causes them. Velocity and spin are inputs to a trajectory; the trajectory is what a hitter faces. Measuring the trajectory directly — induced vertical break, horizontal break, and the angle at which the ball arrives — explains four and a half times more variation in run value than velocity does, and residual spin adds nothing at all once movement is accounted for.")
+    para(doc, "But the more useful finding is about measurement error rather than effect size. Shape is a property; results are a sample. A pitcher's induced vertical break is known almost exactly after thirty pitches, while his run value is barely known after a full season. That asymmetry, not the size of any coefficient, is what should change how pitchers are evaluated. This change would be felt precisely where evaluation is hardest and most valuable: the prospect, the call-up, the new pitch, the trade target with sixty pitches of recent data.")
     rich(doc, [("The honest boundary is worth restating. Command still outranks every pitch property by "
                 "a wide margin, and a full season of a pitcher's own results still beats his shape "
                 "profile. Shape is the best available answer to a specific and common question — ", ""),
@@ -1040,6 +996,14 @@ def build() -> Path:
         [("Interpretation of the results,", "b"), (" the structure of the evaluation framework in §7, "
          "the boundary conditions in §6.5, and editorial revision of the manuscript.", "")],
     ])
+
+    para(doc, "EDITORIAL CONTRIBUTION", size=8, bold=True, color=INK2, font=DATA_FONT,
+         space_after=4, space_before=8)
+    rich(doc, [("Jimmy Stanley", "b"), (" reviewed the full manuscript and contributed edits "
+               "throughout — sharpening the prose, correcting terminology, and catching a section "
+               "cross-reference in §4.3 that was inconsistent between two editions of this paper. "
+               "His revisions improved the clarity of the argument substantially. Responsibility "
+               "for the analysis, the claims, and any remaining errors is mine.", "")])
 
     para(doc, "WHAT AI ASSISTANCE CONTRIBUTED", size=8, bold=True, color=INK2, font=DATA_FONT,
          space_after=4, space_before=8)
