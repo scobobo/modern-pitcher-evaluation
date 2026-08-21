@@ -102,4 +102,6 @@ Code: MIT — see [LICENSE](LICENSE).
 
 Paper text and figures: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) © 2026 Scott Luntz.
 
+**Cite as:** Luntz, S. (2026). *The Shape of the Modern Pitch.* Zenodo. https://doi.org/10.5281/zenodo.22037431
+
 Archived code release: [10.5281/zenodo.22037409](https://doi.org/10.5281/zenodo.22037409)
