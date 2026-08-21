@@ -999,11 +999,9 @@ def build() -> Path:
 
     para(doc, "EDITORIAL CONTRIBUTION", size=8, bold=True, color=INK2, font=DATA_FONT,
          space_after=4, space_before=8)
-    rich(doc, [("Jimmy Stanley", "b"), (" reviewed the full manuscript and contributed edits "
-               "throughout — sharpening the prose, correcting terminology, and catching a section "
-               "cross-reference in §4.3 that was inconsistent between two editions of this paper. "
-               "His revisions improved the clarity of the argument substantially. Responsibility "
-               "for the analysis, the claims, and any remaining errors is mine.", "")])
+    rich(doc, [("Jimmy Stanley", "b"), (" reviewed the full manuscript and edited it throughout. "
+               "The argument is clearer and more precise for it. Responsibility for the analysis, "
+               "the claims, and any remaining errors is mine.", "")])
 
     para(doc, "WHAT AI ASSISTANCE CONTRIBUTED", size=8, bold=True, color=INK2, font=DATA_FONT,
          space_after=4, space_before=8)
