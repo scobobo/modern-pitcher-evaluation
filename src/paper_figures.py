@@ -269,7 +269,12 @@ def fig_social_card(path):
     ax.grid(axis="y", color=RULE, lw=0.8)
     ax.set_axisbelow(True)
 
-    fig.savefig(path, dpi=100, facecolor="#FFFFFF")
+    # Render at 2x the 1200x630 Open Graph size. At 100 dpi the output lands
+    # exactly on the target pixel grid with no oversampling, so text and thin
+    # chart rules render soft, and any upscaling on a high-density screen makes
+    # it worse. 2400x1260 keeps the same 1.91:1 ratio and stays far inside the
+    # 5 MB limit.
+    fig.savefig(path, dpi=200, facecolor="#FFFFFF")
     plt.close(fig)
 
     # Flatten to RGB and write JPEG. Matplotlib emits RGBA even with a solid
@@ -282,6 +287,6 @@ def fig_social_card(path):
     with Image.open(path) as im:
         flat = Image.new("RGB", im.size, "#FFFFFF")
         flat.paste(im, mask=im.split()[-1] if im.mode == "RGBA" else None)
-        flat.save(path.with_suffix(".jpg"), "JPEG", quality=92, optimize=True)
+        flat.save(path.with_suffix(".jpg"), "JPEG", quality=95, optimize=True, subsampling=0)
         if im.mode != "RGB":
             flat.save(path, "PNG", optimize=True)

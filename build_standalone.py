@@ -83,6 +83,16 @@ def main() -> None:
 
     favicon = "data:image/svg+xml," + quote(FAVICON_SVG, safe="")
 
+    # Declare the card's real dimensions. Hardcoding them means the tags start
+    # lying the moment the render resolution changes.
+    card_src = ROOT / "output" / "paper" / "figures" / SOCIAL_CARD
+    card_w, card_h = 1200, 630
+    if card_src.exists():
+        from PIL import Image
+
+        with Image.open(card_src) as _im:
+            card_w, card_h = _im.size
+
     html = f"""<!doctype html>
 <html lang="en">
 <head>
@@ -99,8 +109,8 @@ def main() -> None:
 <meta property="og:type" content="article">
 <meta property="og:url" content="{SITE_URL}/">
 <meta name="image" property="og:image" content="{SITE_URL}/{SOCIAL_CARD}">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
+<meta property="og:image:width" content="{card_w}">
+<meta property="og:image:height" content="{card_h}">
 <meta property="og:image:alt" content="Chart: below about 80 pitches, a pitcher's ball flight predicts his next season better than his own results do.">
 <meta property="og:site_name" content="The Shape of the Modern Pitch">
 <meta name="twitter:card" content="summary_large_image">
@@ -128,7 +138,6 @@ def main() -> None:
     DEPLOY_DIR.mkdir(exist_ok=True)
     (DEPLOY_DIR / "index.html").write_text(html, encoding="utf-8")
 
-    card_src = ROOT / "output" / "paper" / "figures" / SOCIAL_CARD
     if card_src.exists():
         shutil.copy(card_src, DEPLOY_DIR / SOCIAL_CARD)
         print(f"wrote site/index.html + site/{SOCIAL_CARD} -> drag `site/` onto your host")
