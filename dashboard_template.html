@@ -125,9 +125,64 @@
   details.glossary dt { font-family: var(--font-mono); font-size: 0.74rem; color: var(--ink); font-weight: 700; white-space: nowrap; }
   details.glossary dd { margin: 0; color: var(--ink-2); line-height: 1.45; }
 
+  /* ---------- player boards ---------- */
+  .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 1.3rem; }
+  @media (max-width: 900px) { .boards { grid-template-columns: minmax(0, 1fr); } }
+
+  .board { background: var(--sheet); border: 1px solid var(--rule); }
+  .board.up { border-top: 3px solid var(--good); }
+  .board.down { border-top: 3px solid var(--bad); }
+  .board h2 {
+    font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.11em; text-transform: uppercase;
+    margin: 0; padding: 0.75rem 0.95rem 0.3rem; font-weight: 700;
+  }
+  .board.up h2 { color: var(--good); }
+  .board.down h2 { color: var(--bad); }
+  .board-sub {
+    margin: 0; padding: 0 0.95rem 0.7rem; font-size: 0.86rem; color: var(--ink-2);
+    line-height: 1.42; border-bottom: 1px solid var(--rule);
+  }
+
+  .pcard { padding: 0.7rem 0.95rem; border-bottom: 1px solid var(--rule); }
+  .pcard:last-child { border-bottom: 0; }
+  .pcard:hover { background: var(--panel); }
+  .pc-top { display: flex; justify-content: space-between; align-items: baseline; gap: 0.6rem; }
+  .pc-name { font-weight: 700; font-size: 1rem; letter-spacing: -0.01em; }
+  .pc-meta { font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-3); line-height: 1.4; }
+  .pc-move {
+    font-family: var(--font-mono); font-size: 0.9rem; font-weight: 700; white-space: nowrap;
+  }
+  .pcard.up .pc-move { color: var(--good); }
+  .pcard.down .pc-move { color: var(--bad); }
+
+  /* Dumbbell: where the shape sits versus where the results landed. */
+  .pc-bar { position: relative; height: 22px; margin: 0.45rem 0 0.3rem; }
+  .pc-track { position: absolute; top: 10px; left: 0; right: 0; height: 2px; background: var(--rule); }
+  .pc-span { position: absolute; top: 9px; height: 4px; border-radius: 2px; }
+  .pcard.up .pc-span { background: var(--good); }
+  .pcard.down .pc-span { background: var(--bad); }
+  .pc-dot {
+    position: absolute; top: 5px; width: 12px; height: 12px; border-radius: 50%;
+    margin-left: -6px; border: 2px solid var(--sheet);
+  }
+  .pc-dot.shape { background: var(--comp); }
+  .pc-dot.actual { background: var(--ink); }
+  .pc-scale {
+    display: flex; justify-content: space-between; font-family: var(--font-mono);
+    font-size: 0.6rem; color: var(--ink-3);
+  }
+  .pc-read { font-size: 0.85rem; color: var(--ink-2); line-height: 1.4; margin-top: 0.35rem; }
+  .pc-read b { color: var(--ink); font-weight: 700; }
+
+  .board-legend {
+    display: flex; gap: 0.9rem; padding: 0.5rem 0.95rem; font-family: var(--font-mono);
+    font-size: 0.66rem; color: var(--ink-3); border-bottom: 1px solid var(--rule);
+  }
+  .board-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 0.3rem; }
+
   /* ---------- layout ---------- */
   .grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 1.2rem; }
-  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
 
   .card { background: var(--sheet); border: 1px solid var(--rule); }
   .card h2 {
@@ -137,7 +192,7 @@
   .card .body { padding: 0.85rem 0.9rem; }
   .card .cap { font-size: 0.8rem; color: var(--ink-3); line-height: 1.4; padding: 0 0.9rem 0.85rem; }
 
-  canvas { display: block; width: 100%; height: auto; }
+  canvas { display: block; width: 100%; max-width: 100%; height: auto; }
 
   .tbl-scroll { overflow-x: auto; max-height: 460px; overflow-y: auto; }
   table { border-collapse: collapse; width: 100%; font-family: var(--font-mono); font-size: 0.74rem; font-variant-numeric: tabular-nums; }
@@ -232,6 +287,27 @@
   <div class="tiles" id="tiles"></div>
 
   <div class="takeaway" id="takeaway"></div>
+
+  <div class="boards">
+    <div class="board up">
+      <h2>Progression candidates</h2>
+      <p class="board-sub">Their pitch is better than their results. The ball is doing what a much more effective pitch does, and the outcomes have not followed yet. Historically about half of a gap like this closes the next season.</p>
+      <div class="board-legend">
+        <span><i style="background:var(--comp)"></i>what the shape predicts</span>
+        <span><i style="background:var(--ink)"></i>what he actually got</span>
+      </div>
+      <div id="progList"></div>
+    </div>
+    <div class="board down">
+      <h2>Regression candidates</h2>
+      <p class="board-sub">Their results are better than their pitch supports. Some of that is real skill this model cannot see, such as command or sequencing, but some of it historically comes back.</p>
+      <div class="board-legend">
+        <span><i style="background:var(--comp)"></i>what the shape predicts</span>
+        <span><i style="background:var(--ink)"></i>what he actually got</span>
+      </div>
+      <div id="regList"></div>
+    </div>
+  </div>
 
   <div class="grid">
     <div class="card">
@@ -535,19 +611,12 @@
       " seasons in this view, <b>" + pct(overShare) + "</b> are getting <b>better</b> results than their ball flight supports, and <b>" +
       pct(1 - overShare) + "</b> are getting worse. The ones furthest from the line are the ones most likely to move.");
 
-    // 2. Named progression candidate, explained in outcome terms.
-    if (best && g(best, "edge") > 0) {
-      items.push("<span class='up'>Most underrated by his results:</span> <b>" + g(best, "name") + "</b> (" +
-        g(best, "yr") + ", age " + g(best, "age") + "). His " + g(best, "pt") +
-        " shape argues for a <b>" + pct(g(best, "exp")) + "</b> whiff rate and he is actually at <b>" +
-        pct(g(best, "whiff")) + "</b>. The stuff is ahead of the results, so the results are the thing more likely to move.");
-    }
-
-    // 3. Named regression candidate.
-    if (worst && g(worst, "edge") < 0) {
-      items.push("<span class='down'>Most flattered by his results:</span> <b>" + g(worst, "name") + "</b> (" +
-        g(worst, "yr") + ", age " + g(worst, "age") + "). His shape argues for <b>" + pct(g(worst, "exp")) +
-        "</b> and he is at <b>" + pct(g(worst, "whiff")) + "</b>. Some of that gap is real skill this model cannot see, such as command or sequencing, but some of it historically comes back.");
+    // The two boards below name the candidates in full, so the summary points
+    // at them rather than repeating them.
+    if (best && worst) {
+      items.push("The boards below rank the widest gaps in both directions. <span class='up'>" +
+        g(best, "name") + "</span> has the most upside left in his shape here; <span class='down'>" +
+        g(worst, "name") + "</span> is the most flattered by his results.");
     }
 
     // 4. How this group differs from the league, so the filter itself is legible.
@@ -593,6 +662,69 @@
     host.innerHTML = html;
   }
 
+  // ---------- player boards ----------
+  var BOARD_SCALE = 0.5;   // dumbbell axis runs 0 to 50% whiff
+  var BOARD_MIN_N = 300;   // do not headline a pitcher on a thin sample
+  var BOARD_SIZE = 8;
+
+  function playerCard(r, dir) {
+    var exp = g(r, "exp"), act = g(r, "whiff");
+    var gap = act - exp;                       // positive: results ahead of shape
+    var xExp = Math.max(0, Math.min(1, exp / BOARD_SCALE)) * 100;
+    var xAct = Math.max(0, Math.min(1, act / BOARD_SCALE)) * 100;
+    var left = Math.min(xExp, xAct), width = Math.abs(xExp - xAct);
+
+    var read = dir === "up"
+      ? "The pitch is doing what a <b>" + pct(exp) + "</b> whiff pitch does, but he got <b>" + pct(act) +
+        "</b>. If the shape holds, the results are the thing likely to move."
+      : "He got <b>" + pct(act) + "</b> from a pitch whose flight looks more like <b>" + pct(exp) +
+        "</b>. Worth asking what is carrying the extra, and whether it repeats.";
+
+    return "<div class='pcard " + dir + "'>"
+      + "<div class='pc-top'>"
+      +   "<span class='pc-name'>" + g(r, "name") + "</span>"
+      +   "<span class='pc-move'>" + Math.abs(100 * gap).toFixed(1) + " pts "
+      +     (dir === "up" ? "under" : "over") + "</span>"
+      + "</div>"
+      + "<div class='pc-meta'>" + g(r, "yr") + " · age " + (g(r, "age") == null ? "?" : g(r, "age"))
+      +   " · " + g(r, "hand") + "H · " + g(r, "pt") + " · " + g(r, "n").toLocaleString() + " pitches · "
+      +   g(r, "velo").toFixed(1) + " mph</div>"
+      + "<div class='pc-bar'>"
+      +   "<div class='pc-track'></div>"
+      +   "<div class='pc-span' style='left:" + left + "%;width:" + width + "%'></div>"
+      +   "<div class='pc-dot shape' style='left:" + xExp + "%'></div>"
+      +   "<div class='pc-dot actual' style='left:" + xAct + "%'></div>"
+      + "</div>"
+      + "<div class='pc-scale'><span>0%</span><span>25%</span><span>50% whiff</span></div>"
+      + "<div class='pc-read'>" + read + "</div>"
+      + "</div>";
+  }
+
+  function renderBoards(rows) {
+    var prog = document.getElementById("progList");
+    var reg = document.getElementById("regList");
+
+    var scored = rows.filter(function (r) {
+      return g(r, "edge") != null && g(r, "exp") != null && g(r, "n") >= BOARD_MIN_N;
+    });
+
+    if (scored.length < 4) {
+      var msg = "<div class='pcard'><div class='pc-read'>Not enough pitchers with at least "
+        + BOARD_MIN_N + " pitches match these filters. Widen the seasons or lower the minimum pitch count.</div></div>";
+      prog.innerHTML = msg; reg.innerHTML = msg;
+      return;
+    }
+
+    // Rank by edge, which already nets out ordinary mean reversion, then show
+    // the gap itself on the card because that is the part a reader can see.
+    var byEdge = scored.slice().sort(function (a, b) { return g(b, "edge") - g(a, "edge"); });
+    var up = byEdge.slice(0, BOARD_SIZE);
+    var down = byEdge.slice(-BOARD_SIZE).reverse();
+
+    prog.innerHTML = up.map(function (r) { return playerCard(r, "up"); }).join("");
+    reg.innerHTML = down.map(function (r) { return playerCard(r, "down"); }).join("");
+  }
+
   function render() {
     document.getElementById("yrVal").textContent = state.yrFrom === state.yrTo
       ? state.yrFrom : state.yrFrom + "\u2013" + state.yrTo;
@@ -604,6 +736,7 @@
     rows.sort(SORTS[state.sort] || SORTS.edge);
     renderTiles(rows);
     renderTakeaway(rows);
+    renderBoards(rows);
     renderTable(rows);
     renderScatter(rows);
   }
