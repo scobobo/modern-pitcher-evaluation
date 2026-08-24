@@ -118,6 +118,19 @@ def main() -> None:
         for yr, idx in table.groupby("game_year").groups.items():
             table.loc[idx, "shape_exp"] = oof_shape_expectation(table.loc[idx], TARGET)
 
+        # A ridge extrapolates linearly, so a pitcher whose shape sits far
+        # outside the normal range gets an expectation no pitcher has ever
+        # posted -- a knuckleballer's rare four-seamer drew 1.1%, against a
+        # league floor near 6%. Only a handful of rows are affected, but they
+        # are by construction the extremes, so they dominate any "most
+        # over/under-performing" ranking. Clip to the observed range.
+        lo, hi = table[TARGET].quantile([0.01, 0.99])
+        clipped = table["shape_exp"].clip(lo, hi)
+        n_clipped = int((clipped != table["shape_exp"]).sum())
+        if n_clipped:
+            log.info("%s: clipped %d shape expectations to [%.3f, %.3f]", pt, n_clipped, lo, hi)
+        table["shape_exp"] = clipped
+
         # The edge model is fit on complete seasons only, then applied.
         train = _pairs(table[table["game_year"].isin(COMPLETE_SEASONS)],
                        TARGET, MIN_PITCHES, MIN_SWINGS)

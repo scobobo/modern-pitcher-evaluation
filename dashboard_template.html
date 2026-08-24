@@ -92,6 +92,39 @@
   .tile .n { font-family: var(--font-mono); font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; display: block; }
   .tile .l { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-3); display: block; margin-top: 0.15rem; }
 
+  /* ---------- takeaways ---------- */
+  .takeaway {
+    background: var(--sheet); border: 1px solid var(--rule); border-top: 3px solid var(--accent);
+    padding: 0.9rem 1.05rem 1rem; margin-bottom: 1.2rem;
+  }
+  .takeaway h2 {
+    font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.13em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 0.6rem;
+  }
+  .takeaway ul { margin: 0; padding-left: 1.15rem; }
+  .takeaway li { margin-bottom: 0.5rem; line-height: 1.5; font-size: 0.94rem; }
+  .takeaway li:last-child { margin-bottom: 0; }
+  .takeaway b { font-weight: 700; }
+  .takeaway .up { color: var(--good); font-weight: 700; }
+  .takeaway .down { color: var(--bad); font-weight: 700; }
+  .warn {
+    border: 1px solid var(--spin); background: color-mix(in srgb, var(--spin) 8%, transparent);
+    padding: 0.6rem 0.8rem; margin-top: 0.75rem; font-size: 0.86rem; line-height: 1.45;
+  }
+  .warn b { color: var(--ink); }
+
+  details.glossary {
+    background: var(--sheet); border: 1px solid var(--rule);
+    padding: 0.6rem 0.9rem; margin-bottom: 1.2rem; font-size: 0.88rem;
+  }
+  details.glossary summary {
+    cursor: pointer; font-family: var(--font-mono); font-size: 0.68rem;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 700;
+  }
+  details.glossary dl { margin: 0.7rem 0 0; display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 0.9rem; }
+  details.glossary dt { font-family: var(--font-mono); font-size: 0.74rem; color: var(--ink); font-weight: 700; white-space: nowrap; }
+  details.glossary dd { margin: 0; color: var(--ink-2); line-height: 1.45; }
+
   /* ---------- layout ---------- */
   .grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 1.2rem; }
   @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
@@ -180,7 +213,25 @@
     </div>
   </div>
 
+  <details class="glossary">
+    <summary>What the columns mean</summary>
+    <dl>
+      <dt>IVB</dt>
+      <dd>Induced vertical break, in inches. How much backspin resists gravity. A fastball with high IVB does not rise, it just falls less than the hitter expects, which is why it gets swung under.</dd>
+      <dt>VAA</dt>
+      <dd>Vertical approach angle, adjusted for pitch height. How flat the ball is travelling when it reaches the plate, compared with other pitches thrown to the same spot. Flatter is generally better on a four-seamer.</dd>
+      <dt>Whiff</dt>
+      <dd>Share of swings the hitter missed entirely, as a percentage.</dd>
+      <dt>Shape exp</dt>
+      <dd>The whiff rate this pitcher's ball flight alone predicts, ignoring what actually happened to him. Think of it as what the pitch should do.</dd>
+      <dt>Edge</dt>
+      <dd>What the shape argues for beyond simple regression to the mean. Positive means the stuff is better than the results; negative means the results are running ahead of the stuff.</dd>
+    </dl>
+  </details>
+
   <div class="tiles" id="tiles"></div>
+
+  <div class="takeaway" id="takeaway"></div>
 
   <div class="grid">
     <div class="card">
@@ -432,6 +483,116 @@
     ctx.restore();
   }
 
+  // League baselines for the selected pitch types, computed over every season
+  // rather than the filtered slice, so "above average" means above the league
+  // and not above whatever subset the user happens to be looking at.
+  function baseline(key) {
+    var s = 0, n = 0;
+    ROWS.forEach(function (r) {
+      if (state.pt.indexOf(g(r, "pt")) === -1) return;
+      var v = g(r, key);
+      if (v != null) { s += v; n++; }
+    });
+    return n ? s / n : null;
+  }
+
+  function pct(x) { return (100 * x).toFixed(1) + "%"; }
+  function sign(x, dp) { return (x >= 0 ? "+" : "") + x.toFixed(dp); }
+
+  function renderTakeaway(rows) {
+    var host = document.getElementById("takeaway");
+    var ptLabel = state.pt.join(", ");
+
+    if (rows.length < 12) {
+      host.innerHTML = "<h2>What this view says</h2><ul><li>Only <b>" + rows.length +
+        "</b> pitcher-season" + (rows.length === 1 ? "" : "s") +
+        " match these filters. That is too few to read anything into. Widen the season range, lower the minimum pitch count, or add a pitch type.</li></ul>";
+      return;
+    }
+
+    var scored = rows.filter(function (r) { return g(r, "edge") != null && g(r, "exp") != null; });
+    var over = scored.filter(function (r) { return g(r, "whiff") > g(r, "exp"); }).length;
+    var overShare = scored.length ? over / scored.length : 0;
+
+    // Name only pitchers with real volume. The extremes of any edge ranking are
+    // disproportionately thin samples, and a headline built on 160 pitches is a
+    // headline built on noise.
+    var NAMEABLE = 300;
+    var solid = scored.filter(function (r) { return g(r, "n") >= NAMEABLE; });
+    var pool = solid.length >= 5 ? solid : scored;
+    var byEdge = pool.slice().sort(function (a, b) { return g(b, "edge") - g(a, "edge"); });
+    var best = byEdge[0], worst = byEdge[byEdge.length - 1];
+    var thinNames = pool !== solid;
+
+    var mVelo = mean(rows, "velo"), mIvb = mean(rows, "ivb"), mVaa = mean(rows, "vaa");
+    var bVelo = baseline("velo"), bIvb = baseline("ivb"), bVaa = baseline("vaa");
+    var mAge = mean(rows, "age");
+
+    var items = [];
+
+    // 1. The headline split.
+    items.push("Of the <b>" + scored.length.toLocaleString() + "</b> " + ptLabel +
+      " seasons in this view, <b>" + pct(overShare) + "</b> are getting <b>better</b> results than their ball flight supports, and <b>" +
+      pct(1 - overShare) + "</b> are getting worse. The ones furthest from the line are the ones most likely to move.");
+
+    // 2. Named progression candidate, explained in outcome terms.
+    if (best && g(best, "edge") > 0) {
+      items.push("<span class='up'>Most underrated by his results:</span> <b>" + g(best, "name") + "</b> (" +
+        g(best, "yr") + ", age " + g(best, "age") + "). His " + g(best, "pt") +
+        " shape argues for a <b>" + pct(g(best, "exp")) + "</b> whiff rate and he is actually at <b>" +
+        pct(g(best, "whiff")) + "</b>. The stuff is ahead of the results, so the results are the thing more likely to move.");
+    }
+
+    // 3. Named regression candidate.
+    if (worst && g(worst, "edge") < 0) {
+      items.push("<span class='down'>Most flattered by his results:</span> <b>" + g(worst, "name") + "</b> (" +
+        g(worst, "yr") + ", age " + g(worst, "age") + "). His shape argues for <b>" + pct(g(worst, "exp")) +
+        "</b> and he is at <b>" + pct(g(worst, "whiff")) + "</b>. Some of that gap is real skill this model cannot see, such as command or sequencing, but some of it historically comes back.");
+    }
+
+    // 4. How this group differs from the league, so the filter itself is legible.
+    if (mVelo != null && bVelo != null) {
+      var dv = mVelo - bVelo, di = mIvb - bIvb, da = mVaa - bVaa;
+      var descr = [];
+      if (Math.abs(dv) >= 0.3) descr.push("throw <b>" + sign(dv, 1) + " mph</b> " + (dv > 0 ? "harder" : "softer"));
+      if (Math.abs(di) >= 0.3) descr.push("get <b>" + sign(di, 1) + " inches</b> " + (di > 0 ? "more" : "less") + " ride");
+      if (Math.abs(da) >= 0.08) descr.push("arrive <b>" + sign(da, 2) + "°</b> " + (da > 0 ? "flatter" : "steeper"));
+      if (descr.length) {
+        items.push("Compared with all " + ptLabel + " seasons on record, this group " + descr.join(", ") +
+          (mAge != null ? ", at a median age of <b>" + Math.round(mAge) + "</b>" : "") + ".");
+      }
+    }
+
+    // 5. What to actually do, keyed to the sample size the user chose.
+    if (state.minN < 250) {
+      items.push("<b>At this pitch count, lean on the shape column.</b> Below roughly 80 pitches a pitcher's ball flight predicts his next season better than his own results do, and results only pull ahead once the sample gets large.");
+    } else if (state.minN >= 500) {
+      items.push("<b>At this pitch count, lead with the results.</b> Past performance is the better single predictor above roughly 500 pitches. Use the edge column as a tiebreaker between similar arms, not as the primary read.");
+    } else {
+      items.push("<b>At this pitch count, use both.</b> Results have overtaken shape but have not run away with it, and the two together beat either alone. Where they disagree, that disagreement is the signal.");
+    }
+
+    var html = "<h2>What this view says</h2><ul><li>" + items.join("</li><li>") + "</li></ul>";
+
+    // Honest caveats that depend on what is on screen.
+    var warns = [];
+    if (state.yrTo >= META.partial_season) {
+      warns.push("<b>" + META.partial_season + " is a partial season.</b> Those rows cover fewer pitches than a full year, so their results are noisier than the rest.");
+    }
+    if (state.yrFrom <= 2019 && state.yrTo >= 2020) {
+      warns.push("<b>Spin measurement changed in 2020</b> when tracking moved from TrackMan to Hawk-Eye, so values either side of that line are not perfectly comparable.");
+    }
+    warns.push("<b>The edge has been getting weaker.</b> In the backtest its correlation with what mean reversion missed declined by roughly 0.02 a year, and 2024 was the first season it did not help at all. Treat recent edges as softer than the historical average.");
+    if (thinNames) {
+      warns.unshift("<b>The names above come from small samples.</b> Too few pitchers in this view cleared 300 pitches, so the extremes are as likely to be noise as signal.");
+    }
+    if (warns.length) {
+      html += "<div class='warn'>" + warns.join("<br><br>") + "</div>";
+    }
+
+    host.innerHTML = html;
+  }
+
   function render() {
     document.getElementById("yrVal").textContent = state.yrFrom === state.yrTo
       ? state.yrFrom : state.yrFrom + "\u2013" + state.yrTo;
@@ -442,6 +603,7 @@
     var rows = filtered();
     rows.sort(SORTS[state.sort] || SORTS.edge);
     renderTiles(rows);
+    renderTakeaway(rows);
     renderTable(rows);
     renderScatter(rows);
   }
