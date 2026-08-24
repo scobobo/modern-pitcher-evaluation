@@ -143,11 +143,11 @@
     line-height: 1.42; border-bottom: 1px solid var(--rule);
   }
 
-  .pcard { padding: 0.7rem 0.95rem; border-bottom: 1px solid var(--rule); }
+  .pcard { padding: 0.5rem 0.95rem 0.55rem; border-bottom: 1px solid var(--rule); }
   .pcard:last-child { border-bottom: 0; }
   .pcard:hover { background: var(--panel); }
   .pc-top { display: flex; justify-content: space-between; align-items: baseline; gap: 0.6rem; }
-  .pc-name { font-weight: 700; font-size: 1rem; letter-spacing: -0.01em; }
+  .pc-name { font-weight: 700; font-size: 0.95rem; letter-spacing: -0.01em; }
   .pc-meta { font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-3); line-height: 1.4; }
   .pc-move {
     font-family: var(--font-mono); font-size: 0.9rem; font-weight: 700; white-space: nowrap;
@@ -156,23 +156,27 @@
   .pcard.down .pc-move { color: var(--bad); }
 
   /* Dumbbell: where the shape sits versus where the results landed. */
-  .pc-bar { position: relative; height: 22px; margin: 0.45rem 0 0.3rem; }
-  .pc-track { position: absolute; top: 10px; left: 0; right: 0; height: 2px; background: var(--rule); }
-  .pc-span { position: absolute; top: 9px; height: 4px; border-radius: 2px; }
+  .pc-bar { position: relative; height: 16px; margin: 0.35rem 0 0; }
+  .pc-track { position: absolute; top: 7px; left: 0; right: 0; height: 2px; background: var(--rule); }
+  .pc-span { position: absolute; top: 6px; height: 4px; border-radius: 2px; }
   .pcard.up .pc-span { background: var(--good); }
   .pcard.down .pc-span { background: var(--bad); }
   .pc-dot {
-    position: absolute; top: 5px; width: 12px; height: 12px; border-radius: 50%;
-    margin-left: -6px; border: 2px solid var(--sheet);
+    position: absolute; top: 2px; width: 11px; height: 11px; border-radius: 50%;
+    margin-left: -5.5px; border: 2px solid var(--sheet);
   }
   .pc-dot.shape { background: var(--comp); }
   .pc-dot.actual { background: var(--ink); }
-  .pc-scale {
-    display: flex; justify-content: space-between; font-family: var(--font-mono);
-    font-size: 0.6rem; color: var(--ink-3);
-  }
+  .pc-vals { font-family: var(--font-mono); font-size: 0.78rem; white-space: nowrap; }
+  .pc-vals .sh { color: var(--comp); font-weight: 700; }
+  .pc-vals .ac { color: var(--ink); font-weight: 700; }
+  .pc-vals .sep { color: var(--ink-3); }
   .pc-read { font-size: 0.85rem; color: var(--ink-2); line-height: 1.4; margin-top: 0.35rem; }
   .pc-read b { color: var(--ink); font-weight: 700; }
+  .board-scale {
+    display: flex; justify-content: space-between; font-family: var(--font-mono);
+    font-size: 0.6rem; color: var(--ink-3); padding: 0.3rem 0.95rem 0.45rem;
+  }
 
   .board-legend {
     display: flex; gap: 0.9rem; padding: 0.5rem 0.95rem; font-family: var(--font-mono);
@@ -291,19 +295,19 @@
   <div class="boards">
     <div class="board up">
       <h2>Progression candidates</h2>
-      <p class="board-sub">Their pitch is better than their results. The ball is doing what a much more effective pitch does, and the outcomes have not followed yet. Historically about half of a gap like this closes the next season.</p>
+      <p class="board-sub">The ball is doing what a more effective pitch does and the outcomes have not followed. Historically about half of a gap like this closes the next season.</p>
       <div class="board-legend">
-        <span><i style="background:var(--comp)"></i>what the shape predicts</span>
-        <span><i style="background:var(--ink)"></i>what he actually got</span>
+        <span><i style="background:var(--comp)"></i>whiff rate the shape predicts</span>
+        <span><i style="background:var(--ink)"></i>whiff rate he actually got</span>
       </div>
       <div id="progList"></div>
     </div>
     <div class="board down">
       <h2>Regression candidates</h2>
-      <p class="board-sub">Their results are better than their pitch supports. Some of that is real skill this model cannot see, such as command or sequencing, but some of it historically comes back.</p>
+      <p class="board-sub">Results are running ahead of what the pitch supports. Some of that is real skill the model cannot see, such as command, but some of it comes back.</p>
       <div class="board-legend">
-        <span><i style="background:var(--comp)"></i>what the shape predicts</span>
-        <span><i style="background:var(--ink)"></i>what he actually got</span>
+        <span><i style="background:var(--comp)"></i>whiff rate the shape predicts</span>
+        <span><i style="background:var(--ink)"></i>whiff rate he actually got</span>
       </div>
       <div id="regList"></div>
     </div>
@@ -665,38 +669,32 @@
   // ---------- player boards ----------
   var BOARD_SCALE = 0.5;   // dumbbell axis runs 0 to 50% whiff
   var BOARD_MIN_N = 300;   // do not headline a pitcher on a thin sample
-  var BOARD_SIZE = 8;
+  var BOARD_SIZE = 5;
 
   function playerCard(r, dir) {
     var exp = g(r, "exp"), act = g(r, "whiff");
-    var gap = act - exp;                       // positive: results ahead of shape
+    var gap = Math.abs(act - exp) * 100;       // whiff-rate percentage points
     var xExp = Math.max(0, Math.min(1, exp / BOARD_SCALE)) * 100;
     var xAct = Math.max(0, Math.min(1, act / BOARD_SCALE)) * 100;
     var left = Math.min(xExp, xAct), width = Math.abs(xExp - xAct);
 
-    var read = dir === "up"
-      ? "The pitch is doing what a <b>" + pct(exp) + "</b> whiff pitch does, but he got <b>" + pct(act) +
-        "</b>. If the shape holds, the results are the thing likely to move."
-      : "He got <b>" + pct(act) + "</b> from a pitch whose flight looks more like <b>" + pct(exp) +
-        "</b>. Worth asking what is carrying the extra, and whether it repeats.";
-
     return "<div class='pcard " + dir + "'>"
       + "<div class='pc-top'>"
       +   "<span class='pc-name'>" + g(r, "name") + "</span>"
-      +   "<span class='pc-move'>" + Math.abs(100 * gap).toFixed(1) + " pts "
-      +     (dir === "up" ? "under" : "over") + "</span>"
+      +   "<span class='pc-vals'><span class='sh'>" + pct(exp) + "</span>"
+      +     "<span class='sep'> shape &nbsp;/&nbsp; </span>"
+      +     "<span class='ac'>" + pct(act) + "</span><span class='sep'> actual</span></span>"
       + "</div>"
       + "<div class='pc-meta'>" + g(r, "yr") + " · age " + (g(r, "age") == null ? "?" : g(r, "age"))
       +   " · " + g(r, "hand") + "H · " + g(r, "pt") + " · " + g(r, "n").toLocaleString() + " pitches · "
-      +   g(r, "velo").toFixed(1) + " mph</div>"
+      +   g(r, "velo").toFixed(1) + " mph · <b class='pc-move'>" + gap.toFixed(1) + " points "
+      +   (dir === "up" ? "short of" : "above") + " its shape</b></div>"
       + "<div class='pc-bar'>"
       +   "<div class='pc-track'></div>"
       +   "<div class='pc-span' style='left:" + left + "%;width:" + width + "%'></div>"
       +   "<div class='pc-dot shape' style='left:" + xExp + "%'></div>"
       +   "<div class='pc-dot actual' style='left:" + xAct + "%'></div>"
       + "</div>"
-      + "<div class='pc-scale'><span>0%</span><span>25%</span><span>50% whiff</span></div>"
-      + "<div class='pc-read'>" + read + "</div>"
       + "</div>";
   }
 
@@ -721,8 +719,9 @@
     var up = byEdge.slice(0, BOARD_SIZE);
     var down = byEdge.slice(-BOARD_SIZE).reverse();
 
-    prog.innerHTML = up.map(function (r) { return playerCard(r, "up"); }).join("");
-    reg.innerHTML = down.map(function (r) { return playerCard(r, "down"); }).join("");
+    var scale = "<div class='board-scale'><span>0%</span><span>25% whiff rate</span><span>50%</span></div>";
+    prog.innerHTML = up.map(function (r) { return playerCard(r, "up"); }).join("") + scale;
+    reg.innerHTML = down.map(function (r) { return playerCard(r, "down"); }).join("") + scale;
   }
 
   function render() {
