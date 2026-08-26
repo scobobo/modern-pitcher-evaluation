@@ -53,8 +53,8 @@
   .sub { color: var(--ink-2); margin: 0; max-width: 76ch; font-size: 0.95rem; }
 
   .note {
-    background: var(--panel); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
-    padding: 0.7rem 0.9rem; margin: 1rem 0 1.2rem; font-size: 0.86rem; color: var(--ink-2);
+    background: var(--panel); border-left: 3px solid var(--accent);
+    padding: 0.45rem 0.8rem; margin: 0.8rem 0 1rem; font-size: 0.83rem; color: var(--ink-2);
     max-width: 92ch;
   }
   .note strong { color: var(--ink); }
@@ -238,7 +238,7 @@
   </header>
 
   <div class="note">
-    <strong>The model is fixed, not refit.</strong> Shape expectation and edge were fit once on complete seasons (2015–2025), out-of-fold and grouped by pitcher, then applied to every row. Filtering changes which rows you see, never what the model learned — otherwise each filtered view would be reporting a different, unvalidated model. <strong>Edge</strong> is what pitch shape predicts <em>beyond</em> ordinary regression to the mean: positive means the shape argues for better results than a simple mean-reversion forecast would give.
+    <strong>The model is fixed, not refit.</strong> It was trained once on the 2015–2025 seasons and applied to every row, so filtering changes which pitchers you see, never what the model learned.
   </div>
 
   <div class="filters" id="filters">
@@ -292,6 +292,8 @@
       <dd>The whiff rate this pitcher's ball flight alone predicts, ignoring what actually happened to him. Think of it as what the pitch should do.</dd>
       <dt>Edge</dt>
       <dd>What the shape argues for beyond simple regression to the mean. Positive means the stuff is better than the results; negative means the results are running ahead of the stuff.</dd>
+      <dt>Why filtering<br>does not refit</dt>
+      <dd>The shape expectation and the edge were fit once on the complete 2015–2025 seasons, out-of-fold and grouped by pitcher, then applied to every row. If the model refit itself on whatever you filtered to, a narrow selection would quietly report a model trained on a handful of rows, with no validation behind it.</dd>
     </dl>
   </details>
 
@@ -687,7 +689,6 @@
         " are descriptive only. It holds up on four-seamers, sinkers, cutters, sliders and curveballs.");
     }
 
-    warns.push("<b>This worked better in earlier seasons than recent ones.</b> Shape-based pitch design has become standard across the league, so gaps like these may be getting spotted and corrected faster than they used to be. Recent candidates are worth a little less confidence than older ones.");
     if (thinNames) {
       warns.unshift("<b>The names above come from small samples.</b> Too few pitchers in this view cleared 300 pitches, so the extremes are as likely to be noise as signal.");
     }
