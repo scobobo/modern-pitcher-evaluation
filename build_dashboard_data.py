@@ -158,6 +158,30 @@ def main() -> None:
     combined = pd.concat(frames, ignore_index=True)
     combined = attach_age(combined, bios)
 
+    # Validate the edge separately for every pitch type, and ship the verdict
+    # with the data. The model is fit per pitch type but it does not work
+    # equally well on all of them, and a dashboard that presents a sweeper
+    # candidate with the same confidence as a four-seam one is lying by
+    # omission. The test: does the edge explain the part of next season that
+    # this season's results alone do not?
+    validation = {}
+    for pt, g in combined.groupby("pitch_type"):
+        g = g[(g["game_year"] <= max(COMPLETE_SEASONS))].dropna(subset=["shape_edge", TARGET])
+        nxt = g[["pitcher", "game_year", TARGET]].copy()
+        nxt["game_year"] -= 1
+        nxt = nxt.rename(columns={TARGET: "next_actual"})
+        m = g.merge(nxt, on=["pitcher", "game_year"]).dropna(subset=["next_actual"])
+        if len(m) < 120:
+            validation[pt] = {"n": int(len(m)), "r": None, "t": None, "verdict": "untested"}
+            continue
+        coef = np.polyfit(m[TARGET], m["next_actual"], 1)
+        resid = m["next_actual"] - np.polyval(coef, m[TARGET])
+        r = float(np.corrcoef(m["shape_edge"], resid)[0, 1])
+        t = r * np.sqrt((len(m) - 2) / max(1e-12, 1 - r**2))
+        verdict = "validated" if t > 2 else ("inverted" if t < -1.5 else "unproven")
+        validation[pt] = {"n": int(len(m)), "r": round(r, 3), "t": round(float(t), 1), "verdict": verdict}
+        log.info("%s edge validation: r=%+.3f t=%+.1f (%s, n=%d)", pt, r, t, verdict, len(m))
+
     # Prefer the StatsAPI name: Statcast's "Last, First" reads badly in a table.
     combined["player_name"] = combined["full_name"].fillna(combined["player_name"])
 
@@ -187,6 +211,7 @@ def main() -> None:
             "min_swings": MIN_SWINGS,
             "target": TARGET,
             "n_rows": len(rows),
+            "validation": validation,
         },
     }
 

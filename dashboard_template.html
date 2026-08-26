@@ -83,6 +83,13 @@
     color: var(--ink-2); cursor: pointer; user-select: none;
   }
   .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--sheet); font-weight: 700; }
+  /* A dot on the chip carries how well the edge validates for that pitch, so
+     the caveat travels with the control rather than living in a footnote. */
+  .chip .v { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 0.32rem; vertical-align: middle; }
+  .chip .v.validated { background: var(--good); }
+  .chip .v.unproven { background: var(--spin); }
+  .chip .v.inverted { background: var(--bad); }
+  .chip .v.untested { background: var(--neutral); }
   .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   /* ---------- stat tiles ---------- */
@@ -376,7 +383,16 @@
     host.innerHTML = "";
     values.forEach(function (v) {
       var b = document.createElement("button");
-      b.type = "button"; b.className = "chip"; b.textContent = v;
+      b.type = "button"; b.className = "chip";
+      var vd = (key === "pt" && META.validation && META.validation[v]) ? META.validation[v] : null;
+      b.innerHTML = v + (vd ? "<span class='v " + vd.verdict + "'></span>" : "");
+      if (vd) {
+        b.title = vd.verdict === "validated"
+          ? "Edge validated for " + v + " (t = " + vd.t + ", n = " + vd.n + " season pairs)"
+          : vd.verdict === "inverted"
+            ? "Edge points the WRONG WAY for " + v + " historically (t = " + vd.t + ")"
+            : "Edge not proven for " + v + " (t = " + vd.t + ")";
+      }
       b.setAttribute("aria-pressed", state[key].indexOf(v) > -1 ? "true" : "false");
       b.addEventListener("click", function () {
         var i = state[key].indexOf(v);
@@ -655,6 +671,22 @@
     if (state.yrFrom <= 2019 && state.yrTo >= 2020) {
       warns.push("<b>Spin measurement changed in 2020</b> when tracking moved from TrackMan to Hawk-Eye, so values either side of that line are not perfectly comparable.");
     }
+    var weak = state.pt.filter(function (v) {
+      var vd = META.validation && META.validation[v];
+      return vd && vd.verdict !== "validated";
+    });
+    if (weak.length) {
+      var lines = weak.map(function (v) {
+        var vd = META.validation[v];
+        return v + " (" + (vd.verdict === "inverted"
+          ? "historically points the wrong way, t = " + vd.t
+          : "not proven, t = " + vd.t) + ")";
+      });
+      warns.unshift("<b>The edge does not validate for " + lines.join(" and ") +
+        ".</b> Candidates shown for " + (weak.length > 1 ? "those pitches" : "that pitch") +
+        " are descriptive only. It holds up on four-seamers, sinkers, cutters, sliders and curveballs.");
+    }
+
     warns.push("<b>The edge has been getting weaker.</b> In the backtest its correlation with what mean reversion missed declined by roughly 0.02 a year, and 2024 was the first season it did not help at all. Treat recent edges as softer than the historical average.");
     if (thinNames) {
       warns.unshift("<b>The names above come from small samples.</b> Too few pitchers in this view cleared 300 pitches, so the extremes are as likely to be noise as signal.");
