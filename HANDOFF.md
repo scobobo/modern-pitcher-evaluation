@@ -1,0 +1,299 @@
+# Handoff — The Shape of the Modern Pitch
+
+Background context for picking this project up cold. Written 26 August 2026.
+
+---
+
+## What this is
+
+A published baseball research project by **Scott Luntz**, plus the tools built
+on top of it. The goal behind the work is career-oriented: Scott is a
+technologist, not a professional analyst, and this is the portfolio piece
+intended to get him taken seriously in baseball analytics. That framing matters
+for a lot of the decisions below — credibility is worth more here than
+impressiveness, and several choices trade the second for the first.
+
+**Live surfaces**
+
+| What | Where | Status |
+| --- | --- | --- |
+| Paper (web) | https://the-shape-of-the-modern-pitch.netlify.app/ | live, HTTP 200 |
+| Code | https://github.com/scobobo/modern-pitcher-evaluation | pushed, in sync |
+| Paper DOI | `10.5281/zenodo.22037431` | resolves |
+| Code archive DOI | `10.5281/zenodo.22037409` | — |
+| Dashboard (artifact) | `claude.ai/code/artifact/ad575e95-…` | private to Scott |
+| One-pager (artifact) | `claude.ai/code/artifact/879985b5-…` | private to Scott |
+
+Local git is level with `origin/main`, nothing unpushed as of this writing.
+
+---
+
+## The finding, in short
+
+Across 7,483,321 Statcast pitches (2015–2025), **pitch shape** — induced
+vertical break, horizontal break, and height-adjusted vertical approach angle —
+explains **4.5× more** variation in run value than velocity, and **3.4× more**
+for whiffs. **Residual spin rate contributes nothing measurable** once velocity
+is partialled out, even when granted first claim on the shared variance
+(−0.00003 ± 0.00006, t = −0.46).
+
+The more useful half is about measurement error rather than effect size. Shape
+metrics have split-half reliability of **r ≈ 0.99**; run value per pitch has
+**r = 0.20**. Because shape is measured almost exactly from the first pitch, it
+predicts a pitcher's next season better than his own results do **below roughly
+80 pitches**. Above that, results win and keep pulling away.
+
+### Boundaries the paper states explicitly
+
+These are load-bearing. The project's credibility rests on them being present,
+and past sessions have repeatedly had to resist softening them.
+
+- **Command outranks shape roughly 50:1.** Distance from the middle of the zone
+  scores 0.050 in permutation importance; the best physical trait scores
+  0.00097. Shape dominates among *pitch-intrinsic* properties only.
+- **Shape does not replace results on full seasons.** At 500 pitches, past
+  results predict next-season whiff rate at R² 0.362 against shape's 0.188.
+- **The study rejected its own starting hypothesis.** It began from Scott's
+  proposition that spin had displaced velocity, and the data said no. The claim
+  was then narrowed twice more. All three reversals are in §6 of the paper.
+
+---
+
+## Non-goals
+
+- **Injury.** The analysis says nothing about arm health. A commenter drew that
+  connection publicly and the reply deliberately declined it. Anything that
+  implies velocity chasing causes injury is outside what this data supports.
+- **Causal claims.** Everything is observational. Nothing establishes that
+  adding two inches of IVB to a given pitcher would improve his results.
+- **Refitting the model per dashboard filter.** Considered and rejected; see
+  decisions below.
+- **Spin efficiency.** Not computable from public Statcast. `spin_axis` is
+  inferred from observed movement, not measured from Hawk-Eye's 3D axis.
+
+---
+
+## Repo layout
+
+Analysis pipeline:
+
+```
+src/config.py       season windows, pitch groups, constants
+src/fetch.py        Statcast pulls, one parquet per season, chunked with retries
+src/features.py     approach angles, movement, spin residualisation, outcomes
+src/model.py        nested attribution ladder, grouped CV, permutation importance
+src/temporal.py     per-season effects and trend tests
+src/evaluation.py   reliability, year-over-year stability, next-season forecasting
+src/projection.py   shape expectation, gap reversal, projection model
+src/leaderboard.py  walk-forward backtest, decile analysis, board builder
+src/players.py      birth dates and handedness from MLB StatsAPI, cached
+src/plots.py        analysis figures
+src/paper_figures.py  publication figures and the social card
+```
+
+Entry points:
+
+```
+run_analysis.py          attribution ladder (paper §5.1)
+run_paper_analysis.py    VAA robustness, pitch-type generality, reliability (§5.3–5.5)
+run_sample_size_test.py  the crossover experiment (§5.6)
+run_projection.py        regression/progression candidates
+run_leaderboard.py       validated leaderboard + walk-forward backtest
+build_dashboard_data.py  exports the dashboard dataset as JSON
+build_dashboard.py       injects that JSON into the dashboard template
+build_standalone.py      standalone HTML edition of the paper
+build_docx.py            Word edition
+build_pdf.sh             one-pager to PDF via headless Chrome
+```
+
+Documents:
+
+```
+paper.html              artifact source for the paper (no <head> — publisher supplies it)
+onepager.html           one-page executive summary for front-office readers
+dashboard_template.html dashboard markup with a __DATA__ placeholder
+README.md               repo front door
+RESULTS.md              the original findings write-up
+```
+
+Generated and gitignored: `dashboard.html`, `site/`, `site-dashboard/`,
+`The-Shape-of-the-Modern-Pitch.{html,docx}`, `Pitch-Shape-One-Pager.pdf`,
+`data/` (702 MB of parquet), `output/`.
+
+---
+
+## Environment
+
+The machine's system Python is a 3.15 beta with no scientific wheels available,
+and `/usr/bin/python3` is blocked by an unaccepted Xcode licence. The project
+therefore runs on a **`uv`-managed CPython 3.12 in `.venv/`**, installed with
+Scott's approval. Everything is invoked as `.venv/bin/python`.
+
+`pybaseball` needed a workaround: it pulls `cryptography` through a Retrosheet
+module the project never touches, and that build fails here. The install order
+in the README skips it with `--no-deps`.
+
+Not installed, which shaped several decisions: **Node** (so the dataviz palette
+validator could not be run), **LibreOffice / pandoc** (so the docx skill's usual
+toolchain was unavailable and `python-docx` was used instead), **poppler** (so
+PDFs cannot be rendered to images for visual checking). **Google Chrome is
+installed** and is used headless for the one-pager PDF.
+
+---
+
+## Key decisions and why
+
+**Paired fold differences, not point estimates.** Pitch-level run value has an
+SD of 0.23 around a mean of zero, so a feature block can "gain" +0.0004 R² by
+luck. Because `GroupKFold` is deterministic, each block's gain is differenced
+fold by fold to get a standard error. Nothing is called real below t = 2. An
+earlier version of the verdict function declared success off a +0.00039 gain
+against fold noise of ~0.005; this exists to stop that.
+
+**Every ladder rung scores on identical rows.** `release_extension` is null on
+about 2% of pitches, so a per-rung dropna quietly handed later rungs an easier
+sample. That inflated velocity's standard error 50× and made the comparison
+meaningless before it was fixed.
+
+**Folds grouped by pitcher.** Random pitch-level splits let the model memorise
+the arm rather than learn the physics.
+
+**VAA residualised on plate height.** The strongest objection to any shape
+finding is that approach angle is mechanically tied to pitch height. Regressing
+VAA on height (quadratic, within season and pitch type) and keeping the residual
+retains 93% of the shape effect and *improves* the t-statistic.
+
+**The dashboard model is fixed, not refit per filter.** Refitting on whatever
+subset the user selected would mean filtering to "lefties aged 24–27 throwing
+sweepers" silently reports a model trained on 40 rows. Filtering changes which
+rows are shown and nothing else. This is stated on the page.
+
+**Shape expectations clipped to the observed range per pitch type.** A ridge
+extrapolates, so a knuckleballer's rare four-seamer drew a 1.1% expected whiff
+rate against a league floor near 6%. Only ~9 rows were affected out of 14,800,
+but since the boards name the extremes, that one row *was* the headline.
+
+**Named candidates require 300+ pitches**, and the panel says so when too few
+qualify. Same reasoning: the extremes of any edge ranking are disproportionately
+thin samples.
+
+**Age computed as of 30 June**, baseball's convention. 1 January would shift
+about half the population by a year.
+
+**Disclosure is candid rather than minimised.** §10.3 states plainly that AI
+assistance produced the pipeline, the statistical testing, the figures and the
+draft prose, under Scott's direction. The reasoning: an understated disclosure
+that later reads as misleading would cost far more than a candid one, and the
+genuinely creditable parts — setting the falsifiability standard, publishing the
+disconfirming findings — are his.
+
+**Jimmy Stanley credited briefly, not itemised.** He made 53 prose edits. An
+earlier draft listed a specific cross-reference he caught, which read as faint
+praise; acknowledgements are conventionally short.
+
+---
+
+## Verified by running
+
+- **Paper numbers.** Full 11-season pipeline over 7,483,321 pitches. Attribution
+  ladder in both orderings; spin returned −0.00003 ± 0.00006 (t = −0.46) even
+  entering first. Generality across 7 pitch types: shape is the largest block in
+  all 14 pitch-type-by-outcome combinations.
+- **Physics sanity.** 2025 four-seamers: VAA mean −4.74°, IVB 15.8 in, velo 94.4
+  mph, spin 2309 rpm. All match known league values.
+- **Residualisation.** corr(velocity, residual spin) = −0.000.
+- **Walk-forward backtest.** 1,413 out-of-sample pitcher-seasons, shape lift
+  +0.018 R² over mean reversion, positive in 7 of 8 seasons, corr(edge, what
+  mean reversion missed) = +0.148 (t = +5.6). Top edge decile beat the bottom by
+  2.5 points of realised whiff rate.
+- **Signal decay.** The per-season correlation is trending down at −0.024/year
+  (t = −2.42), and 2024 was negative. Surfaced in the dashboard.
+- **No leakage in the dashboard model.** corr(shape expectation, actual) runs
+  0.09–0.49 with an sd ratio of 0.27–0.51 across pitch types; in-sample fitting
+  would put both near 1.0.
+- **End-to-end trace.** Louis Varland's 2026 line recomputed from raw parquet
+  independent of the pipeline: 421 pitches, 232 swings, 44 whiffs, 18.97%,
+  matching the dashboard exactly along with velo, IVB and adjusted VAA.
+- **Per-pitch-type edge validation** (this is the newest finding):
+
+  ```
+  FF t=+10.3   SI t=+4.4   FC t=+3.5   SL t=+2.8   CU t=+2.2   → validated
+  CH t=+1.1                                                    → unproven
+  ST t=-1.9                                                    → points the wrong way
+  ```
+
+  Chips in the dashboard now carry a coloured dot and tooltip, and selecting an
+  unvalidated pitch type warns that its candidates are descriptive only.
+- **One-pager PDF.** 1 page, 8.50 × 11.00 in, selectable text. `build_pdf.sh`
+  fails loudly if it ever becomes two pages.
+- **Data currency.** 2026 refreshed through 25 August: 586,896 pitches, 99.7%
+  run-value coverage. Dataset is 15,142 pitcher-seasons across 7 pitch types.
+
+---
+
+## Unverified assumptions
+
+- **Both DOIs were supplied by Scott and have not been independently confirmed
+  to resolve to the right records.** `doi.org/10.5281/zenodo.22037431` returns a
+  302, which is expected behaviour for a DOI resolver, but the destination
+  content was never checked.
+- **The dashboard artifact renders correctly in the artifact viewer.** It was
+  verified served over `http://localhost:8899`; the artifact publish reported
+  success but the rendered page was not re-inspected there.
+- **The LinkedIn preview card was never confirmed rendering in Post Inspector.**
+  Three separate causes were found and fixed (missing image, RGBA alpha channel,
+  and a missing `name="image"` attribute LinkedIn's own guidance asks for) and
+  the image now serves at 2400×1260 RGB JPEG, but the final Inspector check was
+  left to Scott.
+- **Scott's editorial pass over the manuscript.** §10.3 credits him with
+  editorial revision. He intends to do it; whether it has happened is unknown.
+- **VAA prior-art citations.** §10.2 cites two Alex Chamberlain FanGraphs pieces,
+  both verified by fetching the articles. Other public VAA work exists and is not
+  cited.
+- **The Netlify dashboard is not deployed.** `site-dashboard/` is built and
+  verified locally but has not been dragged to a host.
+
+---
+
+## Known limitations recorded in the paper
+
+The height adjustment removes VAA's main effect on pitch height but not the
+non-linear interaction Chamberlain documented, so the §5.3 figure reads as a
+conservative floor. Sequencing and tunnelling are absent entirely. Shape features
+are collinear, so the block is well identified but individual coefficients are
+not and should not be quoted as effect sizes. Reliability figures come from
+pitchers who threw at least 250 four-seamers, which is a survivorship filter.
+
+---
+
+## Where things stand
+
+The paper is published and citable. The repo is public and in sync. The
+one-pager exists as HTML and PDF with contact details. The dashboard is built,
+audited, and current through 25 August 2026.
+
+The three things most immediately outstanding:
+
+1. **The dashboard has no public home.** It exists as a private artifact and as
+   a built `site-dashboard/` folder. Dragging that folder to Netlify would put it
+   alongside the paper on a URL that needs no login — relevant because Scott is
+   actively sharing this work with baseball people, and artifact links 404 for
+   anyone who is not him.
+
+2. **The LinkedIn preview card is unconfirmed.** Everything upstream is fixed and
+   verified serving, but LinkedIn caches aggressively and may still hold the
+   broken version it scraped while the image was 404ing. Running the URL through
+   Post Inspector before the next share would settle it; `?v=2` forces a fresh
+   scrape if the cache proves sticky.
+
+3. **The changeup and sweeper finding is new and not yet reflected in the paper.**
+   The dashboard now discloses that the edge does not validate for CH and points
+   the wrong way for ST. The paper's §5.4 still reports shape as the largest
+   block in all 14 pitch-type-by-outcome combinations, which remains true for
+   *explaining* outcomes — but the *forecasting* edge is narrower than that, and
+   the paper does not currently say so.
+
+Beyond those, the starter-to-reliever question has come up twice and remains
+untested: whether pitchers whose value concentrates in shape convert to relief
+differently from those who live on command. Statcast carries inning and
+times-through-order, so the data supports it. It would be a second paper.
