@@ -40,6 +40,11 @@ log = logging.getLogger("dashboard_data")
 PITCH_TYPES = ["FF", "SI", "FC", "SL", "ST", "CU", "CH"]
 MIN_PITCHES = 150
 MIN_SWINGS = 60
+# The dashboard will not put a name on a board below this many pitches, so any
+# statistic describing the boards has to be measured on the same population.
+# Measured at 150 the gap looks far more temporary than it is, because thin
+# samples carry more noise and noise always reverses.
+NAMEABLE_PITCHES = 300
 TARGET = "whiff_rate"
 
 OUT = OUTPUT_DIR / "dashboard"
@@ -65,6 +70,119 @@ COLUMNS = [
 ]
 ROUND = {"age": 0, "velo": 1, "ivb": 1, "hb": 1, "vaa": 2, "ext": 1,
          "whiff": 4, "rv": 5, "exp": 4, "edge": 5}
+
+
+def _persistence(block: pd.DataFrame, target: str) -> dict:
+    """How much of a shape-results gap is temporary, and how much is the pitcher?
+
+    The boards rest on the idea that a disagreement between results and shape
+    is partly luck and will partly correct. That is true, but only about half
+    true, and the half that does not correct is the part a reader most needs
+    warned about: it is why the same names come back year after year.
+
+    Measured two ways. The reversal fraction is one minus the year-over-year
+    slope of the gap on itself. The recurrence rate is how often a pitcher in
+    the top or bottom twenty by edge is there again the following season,
+    against the rate you would get by drawing twenty names at random from the
+    qualifying pool.
+    """
+    g = block.dropna(subset=["shape_exp", target, "shape_edge"])
+    g = g[g["n_pitches"] >= NAMEABLE_PITCHES]
+    if "n_swings" in g.columns:
+        g = g[g["n_swings"] >= MIN_SWINGS]
+    g = g[g["game_year"] <= max(COMPLETE_SEASONS)].copy()
+    g["gap"] = g[target] - g["shape_exp"]
+
+    nxt = g[["pitcher", "game_year", "gap"]].copy()
+    nxt["game_year"] -= 1
+    nxt = nxt.rename(columns={"gap": "gap_next"})
+    m = g.merge(nxt, on=["pitcher", "game_year"]).dropna(subset=["gap", "gap_next"])
+    if len(m) < 120:
+        return {"n": int(len(m)), "reversal_pct": None, "recurrence_pct": None, "chance_pct": None}
+
+    slope = float(np.polyfit(m["gap"], m["gap_next"], 1)[0])
+    reversal = max(0.0, min(1.0, 1.0 - slope))
+
+    repeats = total = 0
+    pool_sizes = []
+    for season in sorted(g["game_year"].unique()):
+        cur = g[g["game_year"] == season]
+        nxt_season = g[g["game_year"] == season + 1]
+        if len(cur) < 40 or nxt_season.empty:
+            continue
+        pool_sizes.append(len(nxt_season))
+        for frame in (cur.nlargest(20, "shape_edge"), cur.nsmallest(20, "shape_edge")):
+            names = set(frame["pitcher"])
+            board_next = set(nxt_season.nlargest(20, "shape_edge")["pitcher"]) | set(
+                nxt_season.nsmallest(20, "shape_edge")["pitcher"])
+            total += len(names)
+            repeats += len(names & board_next)
+
+    if not total or not pool_sizes:
+        return {"n": int(len(m)), "reversal_pct": round(reversal * 100), "recurrence_pct": None, "chance_pct": None}
+
+    chance = 40.0 / (sum(pool_sizes) / len(pool_sizes))
+    return {
+        "n": int(len(m)),
+        "reversal_pct": round(reversal * 100),
+        "recurrence_pct": round(100 * repeats / total),
+        "chance_pct": round(100 * min(1.0, chance)),
+    }
+
+
+def _walk_forward_verdict(block: pd.DataFrame, target: str) -> dict:
+    """Does the edge predict next season, using only prior seasons to build it?
+
+    For each season the naive and full models are fit on pairs that closed
+    before it, the edge is computed for that season's pitchers, and the result
+    is scored against what they actually did the following year. Seasons with
+    too little history to train on contribute nothing, which is why the sample
+    here is smaller than the season count suggests.
+    """
+    g = block.dropna(subset=["shape_exp", target])
+    g = g[g["n_pitches"] >= MIN_PITCHES]
+    if "n_swings" in g.columns:
+        g = g[g["n_swings"] >= MIN_SWINGS]
+
+    scored = []
+    for season in sorted(g["game_year"].unique()):
+        if season > max(COMPLETE_SEASONS):
+            continue
+        history = g[g["game_year"] < season]
+        train = _pairs(history, target, MIN_PITCHES, MIN_SWINGS)
+        train = train.dropna(subset=[target, "shape_exp", "next_actual"])
+        if len(train) < 120:
+            continue
+
+        y = train["next_actual"].to_numpy(float)
+        naive = Ridge(alpha=1.0, random_state=RANDOM_SEED).fit(train[[target]].to_numpy(float), y)
+        full = Ridge(alpha=1.0, random_state=RANDOM_SEED).fit(
+            train[[target, "shape_exp"]].to_numpy(float), y)
+
+        board = g[g["game_year"] == season].copy()
+        if board.empty:
+            continue
+        x_full = board[[target, "shape_exp"]].to_numpy(float)
+        board["wf_edge"] = full.predict(x_full) - naive.predict(x_full[:, :1])
+        board["wf_naive"] = naive.predict(x_full[:, :1])
+
+        future = g[g["game_year"] == season + 1][["pitcher", target]].rename(
+            columns={target: "next_actual"})
+        scored.append(board.merge(future, on="pitcher", how="inner"))
+
+    if not scored:
+        return {"n": 0, "r": None, "t": None, "verdict": "untested"}
+
+    m = pd.concat(scored, ignore_index=True).dropna(subset=["next_actual", "wf_edge"])
+    if len(m) < 120:
+        return {"n": int(len(m)), "r": None, "t": None, "verdict": "untested"}
+
+    # What mean reversion alone failed to predict, and whether the edge knew.
+    resid = m["next_actual"] - m["wf_naive"]
+    r = float(np.corrcoef(m["wf_edge"], resid)[0, 1])
+    t = r * np.sqrt((len(m) - 2) / max(1e-12, 1 - r**2))
+    verdict = "validated" if t > 2 else ("inverted" if t < -1.5 else "unproven")
+    return {"n": int(len(m)), "r": round(r, 3), "t": round(float(t), 1), "verdict": verdict}
 
 
 def oof_shape_expectation(block: pd.DataFrame, target: str) -> pd.Series:
@@ -162,25 +280,34 @@ def main() -> None:
     # with the data. The model is fit per pitch type but it does not work
     # equally well on all of them, and a dashboard that presents a sweeper
     # candidate with the same confidence as a four-seam one is lying by
-    # omission. The test: does the edge explain the part of next season that
-    # this season's results alone do not?
+    # omission.
+    #
+    # The validation must be walk-forward. An earlier version scored the
+    # shipped `shape_edge`, which is fit on every complete season, against
+    # pairs drawn from those same seasons; each pair was therefore judged by a
+    # model that had seen its own future. That is generous by roughly three
+    # t-points, enough to turn "no signal" into a validated badge on cutters,
+    # sliders and curveballs. Here the edge is refit for each season using only
+    # the seasons before it, which is the information a user actually has when
+    # reading the board.
     validation = {}
     for pt, g in combined.groupby("pitch_type"):
-        g = g[(g["game_year"] <= max(COMPLETE_SEASONS))].dropna(subset=["shape_edge", TARGET])
-        nxt = g[["pitcher", "game_year", TARGET]].copy()
-        nxt["game_year"] -= 1
-        nxt = nxt.rename(columns={TARGET: "next_actual"})
-        m = g.merge(nxt, on=["pitcher", "game_year"]).dropna(subset=["next_actual"])
-        if len(m) < 120:
-            validation[pt] = {"n": int(len(m)), "r": None, "t": None, "verdict": "untested"}
-            continue
-        coef = np.polyfit(m[TARGET], m["next_actual"], 1)
-        resid = m["next_actual"] - np.polyval(coef, m[TARGET])
-        r = float(np.corrcoef(m["shape_edge"], resid)[0, 1])
-        t = r * np.sqrt((len(m) - 2) / max(1e-12, 1 - r**2))
-        verdict = "validated" if t > 2 else ("inverted" if t < -1.5 else "unproven")
-        validation[pt] = {"n": int(len(m)), "r": round(r, 3), "t": round(float(t), 1), "verdict": verdict}
-        log.info("%s edge validation: r=%+.3f t=%+.1f (%s, n=%d)", pt, r, t, verdict, len(m))
+        validation[pt] = _walk_forward_verdict(g, TARGET)
+        v = validation[pt]
+        log.info("%s edge validation (walk-forward): r=%s t=%s (%s, n=%d)",
+                 pt, v["r"], v["t"], v["verdict"], v["n"])
+
+    # How much of a gap actually corrects, measured on the pitch types where
+    # the edge validates. Shipped so the panel can say it rather than imply a
+    # correction that mostly does not arrive.
+    validated_types = [pt for pt, v in validation.items() if v["verdict"] == "validated"]
+    persistence = _persistence(
+        combined[combined["pitch_type"].isin(validated_types)] if validated_types else combined,
+        TARGET,
+    )
+    log.info("gap persistence: %s%% reverses; boards repeat %s%% vs %s%% by chance (n=%d)",
+             persistence["reversal_pct"], persistence["recurrence_pct"],
+             persistence["chance_pct"], persistence["n"])
 
     # Prefer the StatsAPI name: Statcast's "Last, First" reads badly in a table.
     combined["player_name"] = combined["full_name"].fillna(combined["player_name"])
@@ -212,6 +339,7 @@ def main() -> None:
             "target": TARGET,
             "n_rows": len(rows),
             "validation": validation,
+            "persistence": persistence,
         },
     }
 

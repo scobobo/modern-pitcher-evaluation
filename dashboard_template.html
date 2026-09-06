@@ -636,9 +636,12 @@
     // The two boards below name the candidates in full, so the summary points
     // at them rather than repeating them.
     if (best && worst) {
+      var partly = (META.persistence && META.persistence.reversal_pct != null)
+        ? " Historically about " + META.persistence.reversal_pct + "% of a gap like this closes, so read these as partial moves rather than full corrections."
+        : "";
       items.push("The boards below rank the widest gaps in both directions. <span class='up'>" +
         g(best, "name") + "</span> has the most upside left in his shape here; <span class='down'>" +
-        g(worst, "name") + "</span> is the most flattered by his results.");
+        g(worst, "name") + "</span> is the most flattered by his results." + partly);
     }
 
     // 4. How this group differs from the league, so the filter itself is legible.
@@ -684,9 +687,27 @@
           ? "historically points the wrong way, t = " + vd.t
           : "not proven, t = " + vd.t) + ")";
       });
+      var holds = Object.keys(META.validation || {}).filter(function (v) {
+        return META.validation[v].verdict === "validated";
+      });
       warns.unshift("<b>The edge does not validate for " + lines.join(" and ") +
         ".</b> Candidates shown for " + (weak.length > 1 ? "those pitches" : "that pitch") +
-        " are descriptive only. It holds up on four-seamers, sinkers, cutters, sliders and curveballs.");
+        " are descriptive only." + (holds.length
+          ? " It holds up on " + holds.join(" and ") + "."
+          : ""));
+    }
+
+    var P = META.persistence;
+    if (P && P.reversal_pct != null) {
+      var stays = 100 - P.reversal_pct;
+      warns.push("<b>About " + stays + "% of a gap this size never closes.</b> Year to year these gaps " +
+        "shrink by roughly " + P.reversal_pct + "%, and the rest is something real about the pitcher that " +
+        "ball flight does not measure, like command or how well he hides the ball. Expect these names to " +
+        "move part of the way, not all of it" +
+        (P.recurrence_pct != null
+          ? ", and expect to see many of them here again next year: " + P.recurrence_pct +
+            "% come back to the same board, against " + P.chance_pct + "% by chance."
+          : "."));
     }
 
     if (thinNames) {

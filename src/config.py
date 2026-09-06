@@ -33,7 +33,7 @@ SEASON_WINDOWS: dict[int, tuple[str, str]] = {
     # In progress. The end date is "as of" rather than the season's close, so
     # anything built on 2026 is a partial sample by construction -- which is
     # precisely the regime where shape outperforms outcome statistics.
-    2026: ("2026-03-25", "2026-08-25"),
+    2026: ("2026-03-25", "2026-09-05"),
 }
 
 # Seasons that are complete. Trend analysis and model training use these only;

@@ -216,18 +216,34 @@ praise; acknowledgements are conventionally short.
   matching the dashboard exactly along with velo, IVB and adjusted VAA.
 - **Per-pitch-type edge validation** (this is the newest finding):
 
+  Those verdicts were **wrong** and were corrected on 6 September 2026. The old
+  test scored the shipped `shape_edge`, which is fit on every complete season,
+  against pairs drawn from those same seasons, so each pair was judged by a
+  model that had seen its own future. Refit walk-forward, using only seasons
+  that closed before each board:
+
   ```
-  FF t=+10.3   SI t=+4.4   FC t=+3.5   SL t=+2.8   CU t=+2.2   → validated
-  CH t=+1.1                                                    → unproven
-  ST t=-1.9                                                    → points the wrong way
+  FF t=+9.9   SI t=+6.7                        → validated
+  SL t=+1.5   CU t=+0.7   CH t=-0.2   FC t=-0.1 → unproven
+  ST n=0                                        → untested, no scoreable pairs
   ```
 
-  Chips in the dashboard now carry a coloured dot and tooltip, and selecting an
-  unvalidated pitch type warns that its candidates are descriptive only.
+  Only four-seamers and sinkers survive. Cutter, slider and curveball had been
+  shipping green "validated" dots on a signal that is not there. The dashboard
+  derives the "it holds up on" list from the data now rather than hardcoding it,
+  so this cannot drift again.
 - **One-pager PDF.** 1 page, 8.50 × 11.00 in, selectable text. `build_pdf.sh`
   fails loudly if it ever becomes two pages.
-- **Data currency.** 2026 refreshed through 25 August: 586,896 pitches, 99.7%
-  run-value coverage. Dataset is 15,142 pitcher-seasons across 7 pitch types.
+- **Data currency.** 2026 refreshed through 5 September: 631,402 pitches, 99.7%
+  run-value coverage. Dataset is 15,211 pitcher-seasons across 7 pitch types.
+- **Board rows trace to raw parquet.** Varland, Misiorowski and Chandler each
+  recomputed from `data/statcast_2026.parquet` with no project modules: pitch
+  counts, swings, whiff rate, velocity and IVB all match the leaderboard exactly.
+- **Gap persistence.** Only about 53% of a shape-results gap closes year over
+  year at the 300-pitch threshold the boards name at, and 29% of named
+  candidates return to the same board next season against 10% by chance. The
+  boards are partly identifying chronic mismatches, not just luck, and the
+  panel now says so.
 
 ---
 
@@ -286,12 +302,15 @@ The three things most immediately outstanding:
    Post Inspector before the next share would settle it; `?v=2` forces a fresh
    scrape if the cache proves sticky.
 
-3. **The changeup and sweeper finding is new and not yet reflected in the paper.**
-   The dashboard now discloses that the edge does not validate for CH and points
-   the wrong way for ST. The paper's §5.4 still reports shape as the largest
-   block in all 14 pitch-type-by-outcome combinations, which remains true for
-   *explaining* outcomes — but the *forecasting* edge is narrower than that, and
-   the paper does not currently say so.
+3. **The forecasting edge is far narrower than the paper implies, and the gap
+   is now wider than it was.** After the walk-forward correction the edge
+   validates on four-seamers and sinkers only, not five pitch types. The paper's
+   §5.4 still reports shape as the largest block in all 14
+   pitch-type-by-outcome combinations, which remains true for *explaining*
+   outcomes and is unaffected by this. But a reader carries that
+   fourteen-for-fourteen result into forecasting, where the honest count is two
+   of seven. The paper does not currently distinguish the two, and after this
+   correction that omission matters more than it did.
 
 Beyond those, the starter-to-reliever question has come up twice and remains
 untested: whether pitchers whose value concentrates in shape convert to relief
