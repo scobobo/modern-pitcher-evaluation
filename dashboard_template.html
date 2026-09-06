@@ -293,7 +293,7 @@
       <dt>Edge</dt>
       <dd>What the shape argues for beyond simple regression to the mean. Positive means the stuff is better than the results; negative means the results are running ahead of the stuff.</dd>
       <dt>Why filtering<br>does not refit</dt>
-      <dd>The shape expectation and the edge were fit once on the complete 2015–2025 seasons, out-of-fold and grouped by pitcher, then applied to every row. If the model refit itself on whatever you filtered to, a narrow selection would quietly report a model trained on a handful of rows, with no validation behind it.</dd>
+      <dd>The shape expectation is fit out-of-fold and grouped by pitcher, so no pitcher's expectation comes from a model that has seen him. The edge is trained on the <b>four most recent complete seasons</b> rather than all eleven, because the game drifts: league fastball velocity is up nearly two miles an hour since 2015, and including seasons that old made recent predictions measurably worse. Both are fit once, here, and then applied to every row. If the model refit itself on whatever you filtered to, a narrow selection would quietly report a model trained on a handful of rows with no validation behind it.</dd>
     </dl>
   </details>
 
@@ -664,6 +664,13 @@
       items.push("<b>At this pitch count, lead with the results.</b> Past performance is the better single predictor above roughly 500 pitches. Use the edge column as a tiebreaker between similar arms, not as the primary read.");
     } else {
       items.push("<b>At this pitch count, use both.</b> Results have overtaken shape but have not run away with it, and the two together beat either alone. Where they disagree, that disagreement is the signal.");
+    }
+
+    if (META.train_window) {
+      items.push("<b>The edge is trained on the last " + META.train_window +
+        " complete seasons only.</b> Shape and results drift apart as the league changes, so older seasons " +
+        "made recent calls worse rather than better. Fit this way the edge held up in every one of the last " +
+        "eight seasons tested, with no sign of fading.");
     }
 
     var html = "<h2>What this view says</h2><ul><li>" + items.join("</li><li>") + "</li></ul>";

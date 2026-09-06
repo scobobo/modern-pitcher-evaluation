@@ -45,6 +45,29 @@ MIN_SWINGS = 60
 # Measured at 150 the gap looks far more temporary than it is, because thin
 # samples carry more noise and noise always reverses.
 NAMEABLE_PITCHES = 300
+# The edge model trains on a rolling window of recent seasons rather than all
+# history. The relationship between shape and results drifts -- league velocity
+# is up 1.7 mph since 2015 and whiff rate is up 2.4 points -- so seasons from a
+# decade ago describe a game that is no longer being played, and including them
+# measurably degrades recent predictions.
+#
+# Measured walk-forward on four-seamers, comparing training windows:
+#
+#   window        edge/residual r (2022+)   named candidates beat naive
+#   all history            0.205                   +1.86 pp (t=+5.7)
+#   5 seasons              0.246                   +2.01 pp (t=+5.9)
+#   4 seasons              0.263                   +2.38 pp (t=+6.8)
+#   3 seasons              0.287                   +2.48 pp (t=+7.2)
+#
+# It also removes the decay that made the old boards untrustworthy: the trend in
+# per-season edge quality goes from -0.0199/yr (t=-2.36, p=0.05) on all history
+# to -0.0112/yr (t=-1.46, p=0.19) at four seasons, which is no longer
+# distinguishable from flat.
+#
+# Three seasons scored best but falls to 183 training pairs in one year, and
+# picking the top window on the same data used to evaluate it is a way to
+# overfit a hyperparameter. Four keeps 391-595 pairs and gets most of the gain.
+TRAIN_WINDOW = 4
 TARGET = "whiff_rate"
 
 OUT = OUTPUT_DIR / "dashboard"
@@ -148,7 +171,7 @@ def _walk_forward_verdict(block: pd.DataFrame, target: str) -> dict:
     for season in sorted(g["game_year"].unique()):
         if season > max(COMPLETE_SEASONS):
             continue
-        history = g[g["game_year"] < season]
+        history = g[(g["game_year"] < season) & (g["game_year"] >= season - TRAIN_WINDOW)]
         train = _pairs(history, target, MIN_PITCHES, MIN_SWINGS)
         train = train.dropna(subset=[target, "shape_exp", "next_actual"])
         if len(train) < 120:
@@ -249,8 +272,10 @@ def main() -> None:
             log.info("%s: clipped %d shape expectations to [%.3f, %.3f]", pt, n_clipped, lo, hi)
         table["shape_exp"] = clipped
 
-        # The edge model is fit on complete seasons only, then applied.
-        train = _pairs(table[table["game_year"].isin(COMPLETE_SEASONS)],
+        # The edge model is fit on the most recent complete seasons, then
+        # applied to every row. See TRAIN_WINDOW for why it is not all history.
+        recent = [y for y in COMPLETE_SEASONS if y > max(COMPLETE_SEASONS) - TRAIN_WINDOW]
+        train = _pairs(table[table["game_year"].isin(recent)],
                        TARGET, MIN_PITCHES, MIN_SWINGS)
         if len(train) >= 150:
             pipe = _shape_model(train, TARGET)
@@ -337,6 +362,7 @@ def main() -> None:
             "min_pitches": MIN_PITCHES,
             "min_swings": MIN_SWINGS,
             "target": TARGET,
+            "train_window": TRAIN_WINDOW,
             "n_rows": len(rows),
             "validation": validation,
             "persistence": persistence,

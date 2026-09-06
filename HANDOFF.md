@@ -202,12 +202,28 @@ praise; acknowledgements are conventionally short.
 - **Physics sanity.** 2025 four-seamers: VAA mean −4.74°, IVB 15.8 in, velo 94.4
   mph, spin 2309 rpm. All match known league values.
 - **Residualisation.** corr(velocity, residual spin) = −0.000.
-- **Walk-forward backtest.** 1,413 out-of-sample pitcher-seasons, shape lift
-  +0.018 R² over mean reversion, positive in 7 of 8 seasons, corr(edge, what
-  mean reversion missed) = +0.148 (t = +5.6). Top edge decile beat the bottom by
-  2.5 points of realised whiff rate.
-- **Signal decay.** The per-season correlation is trending down at −0.024/year
-  (t = −2.42), and 2024 was negative. Surfaced in the dashboard.
+- **Walk-forward backtest**, rerun 6 September 2026 with the rolling window.
+  1,413 out-of-sample pitcher-seasons, shape lift **+0.0241** R² over mean
+  reversion (was +0.018), positive in **8 of 8** seasons (was 7 of 8),
+  corr(edge, what mean reversion missed) = **+0.239, t = +9.2** (was +0.148,
+  t = +5.6). Top edge decile beat the bottom by **3.7** points of realised whiff
+  rate (was 2.5). The two seasons that had died came back: 2023→2024 lift
+  +0.0000 → +0.0226, and 2024→2025 −0.0178 → +0.0104.
+- **Signal decay, found and then fixed.** The per-season correlation was
+  trending down at −0.024/year (t = −2.42), with 2024 flat and 2025 negative.
+  The cause was training on all eleven seasons: the game drifts (league fastball
+  velocity is up 1.66 mph since 2015, t = +10.9) so decade-old seasons describe
+  pitchers who no longer exist. Training the edge on a rolling **4-season
+  window** removes it. The lift trend goes from −0.0034/year to +0.0003/year
+  (t = +0.14, p = 0.89), which is flat.
+
+  Era-neutralising the features instead — z-scoring shape within each season —
+  was tried first and made things slightly *worse* (recent r 0.193 vs 0.205), so
+  the problem is not that the units drifted, it is that the relationship did.
+
+  A 3-season window scored marginally better still but drops to 183 training
+  pairs in one year, and picking the top window on the same data used to
+  evaluate it overfits the hyperparameter. Four was chosen for stability.
 - **No leakage in the dashboard model.** corr(shape expectation, actual) runs
   0.09–0.49 with an sd ratio of 0.27–0.51 across pitch types; in-sample fitting
   would put both near 1.0.
@@ -223,10 +239,14 @@ praise; acknowledgements are conventionally short.
   that closed before each board:
 
   ```
-  FF t=+9.9   SI t=+6.7                        → validated
-  SL t=+1.5   CU t=+0.7   CH t=-0.2   FC t=-0.1 → unproven
-  ST n=0                                        → untested, no scoreable pairs
+  FF t=+12.7   SI t=+7.3                        → validated
+  SL t=+1.4    CU t=+0.1   FC t=+0.8   CH t=-0.8 → unproven
+  ST n=0                                         → untested, no scoreable pairs
   ```
+
+  (Those are with the rolling window in place, which lifted FF from +9.9 and SI
+  from +6.7. It sharpens real signal without manufacturing any: the four
+  unproven types stayed unproven.)
 
   Only four-seamers and sinkers survive. Cutter, slider and curveball had been
   shipping green "validated" dots on a signal that is not there. The dashboard

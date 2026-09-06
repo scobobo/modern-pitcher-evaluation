@@ -32,6 +32,11 @@ from projection import SHAPE_FEATURES
 
 log = logging.getLogger(__name__)
 
+# Seasons of history the edge model trains on. The shape-to-results
+# relationship drifts, so old seasons hurt rather than help; see
+# build_dashboard_data.TRAIN_WINDOW for the measurements behind this value.
+TRAIN_WINDOW = 4
+
 
 def _shape_model(train: pd.DataFrame, target: str):
     frame = train[SHAPE_FEATURES + [target]].dropna()
@@ -76,8 +81,14 @@ def walk_forward_backtest(
     min_pitches: int = 250,
     min_swings: int = 100,
     min_train: int = 200,
+    train_window: int | None = TRAIN_WINDOW,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Score each season using only the seasons before it.
+
+    `train_window` limits training to that many seasons back, which is how the
+    shipped model is fit. Pass None to train on all prior history, which is what
+    this did before and which measurably decays: the game drifts, and seasons
+    from a decade ago describe pitchers who are no longer representative.
 
     Returns (per-season results, pooled predictions) so the caller can compute
     aggregate statistics over genuinely out-of-sample rows.
@@ -86,6 +97,8 @@ def walk_forward_backtest(
 
     for season in sorted(seasons):
         train_tbl = table[table["game_year"] < season]
+        if train_window:
+            train_tbl = train_tbl[train_tbl["game_year"] >= season - train_window]
         train = _pairs(train_tbl, target, min_pitches, min_swings)
         if len(train) < min_train:
             log.info("season %s: only %d training pairs, skipping", season, len(train))
