@@ -110,10 +110,33 @@
   tr.clickable { cursor: pointer; }
   tr.clickable:hover td { background: var(--panel); }
   tr.clickable:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-  .arsenal { position: relative; margin-bottom: 1.1rem; }
+  /* A flyout rather than an inline card: the point of an arsenal view is to
+     compare pitchers, which means keeping the table in view while you read it. */
+  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,0.32); border: 0; padding: 0;
+    z-index: 40; animation: fade 0.14s ease-out; }
+  @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes slide { from { transform: translateX(14px); opacity: 0 } to { transform: none; opacity: 1 } }
+  .arsenal {
+    position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 94vw);
+    background: var(--sheet); border-left: 1px solid var(--rule-strong);
+    box-shadow: -12px 0 32px rgba(0,0,0,0.16);
+    padding: 1.15rem 1.25rem 2rem; overflow-y: auto; z-index: 41;
+    animation: slide 0.16s ease-out;
+  }
   .arsenal .close { position: absolute; top: 0.9rem; right: 1rem; margin: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    .scrim, .arsenal { animation: none; }
+  }
   .arsenal h3 { margin: 0 0 0.2rem; font-size: 1.02rem; }
   .arsenal .tbl-wrap { overflow-x: auto; }
+  .movplot { width: 100%; max-width: 400px; height: auto; display: block; margin: 0.2rem auto 0.6rem; }
+  .movplot .mg { stroke: var(--rule); stroke-width: 1; }
+  .movplot .mx { stroke: var(--rule-strong); stroke-width: 1.2; }
+  .movplot .msep { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.55; }
+  .movplot .mp { fill: var(--comp); fill-opacity: 0.34; stroke: var(--comp); stroke-width: 1.4; }
+  .movplot .mp.ref { fill: var(--spin); fill-opacity: 0.42; stroke: var(--spin); stroke-width: 2; }
+  .movplot .ml { font-family: var(--font-mono); font-size: 9px; fill: var(--ink); font-weight: 600; }
+  .movplot .ma { font-family: var(--font-mono); font-size: 9px; fill: var(--ink-3); }
   table.mini { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
   table.mini th, table.mini td { padding: 0.34rem 0.5rem; text-align: right; white-space: nowrap;
     border-bottom: 1px solid var(--rule); }
@@ -752,6 +775,47 @@
       ctx.textAlign = "center"; ctx.fillText((100 * t).toFixed(0) + "%", X(t), pad.t + h + 16);
     });
 
+    // How far off the line a point has to be before it means anything.
+    //
+    // Whiff rate is a proportion measured over swings, so its standard error is
+    // sqrt(p(1-p)/swings) and it shrinks as the sample grows. The band is drawn
+    // for a pitcher sitting exactly at the current minimum-pitches filter,
+    // which makes the slider a live demonstration: drag it up and the band
+    // visibly narrows. Anything inside it is not distinguishable from its own
+    // expectation, however far from the line it looks.
+    //
+    // Swings are estimated from pitches using the median swing rate actually in
+    // view rather than a constant, because a sweeper draws swings at a very
+    // different rate from a sinker.
+    var ratios = [];
+    rows.forEach(function (r) {
+      var n = g(r, "n"), sw = g(r, "sw");
+      if (n && sw) ratios.push(sw / n);
+    });
+    var bandSwings = null;
+    if (ratios.length) {
+      ratios.sort(function (a, b) { return a - b; });
+      bandSwings = Math.max(20, Math.round(state.minN * ratios[Math.floor(ratios.length / 2)]));
+    }
+
+    if (bandSwings) {
+      ctx.fillStyle = css("--rule-strong");
+      ctx.globalAlpha = 0.16;
+      ctx.beginPath();
+      var first = true;
+      for (var v = lo; v <= hi + 1e-9; v += (hi - lo) / 80) {
+        var se = Math.sqrt(Math.max(v * (1 - v), 1e-9) / bandSwings);
+        var y = Math.min(hi, v + 1.96 * se);
+        if (first) { ctx.moveTo(X(v), Y(y)); first = false; } else { ctx.lineTo(X(v), Y(y)); }
+      }
+      for (var v2 = hi; v2 >= lo - 1e-9; v2 -= (hi - lo) / 80) {
+        var se2 = Math.sqrt(Math.max(v2 * (1 - v2), 1e-9) / bandSwings);
+        ctx.lineTo(X(v2), Y(Math.max(lo, v2 - 1.96 * se2)));
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
     // parity line
     ctx.strokeStyle = css("--rule-strong");
     ctx.setLineDash([4, 4]);
@@ -772,6 +836,12 @@
 
     ctx.fillStyle = ink3; ctx.textAlign = "center";
     ctx.fillText("whiff rate predicted from shape alone", pad.l + w / 2, cssH - 4);
+
+    if (bandSwings) {
+      ctx.textAlign = "left";
+      ctx.fillText("shaded: where a " + state.minN.toLocaleString() + "-pitch sample (~" +
+        bandSwings + " swings) lands by chance", pad.l + 6, pad.t + 12);
+    }
     ctx.save();
     ctx.translate(12, pad.t + h / 2); ctx.rotate(-Math.PI / 2);
     ctx.fillText("actual whiff rate", 0, 0);
@@ -1075,6 +1145,80 @@
                .sort(function (a, b) { return g(b, "n") - g(a, "n"); });
   }
 
+  // The arsenal as a movement plot. A table of separation numbers tells you a
+  // slider is 10 mph slower and 24 inches away; this shows you the shape of the
+  // whole repertoire at once, which is how the separation is actually read.
+  //
+  // Horizontal break is mirrored for left-handers, so the two hands produce the
+  // same picture. Note the sign: despite the `pfx_x_armside` name upstream, the
+  // positive direction here is GLOVE side. Sinkers and changeups sit negative,
+  // sweepers and curveballs positive, which matches Statcast's raw convention
+  // and the catcher's-view movement plots people are used to. Both ends of the
+  // axis are labelled so nobody has to infer it.
+  function movementPlot(rows, refRow) {
+    var W = 340, H = 290, pad = { l: 40, r: 16, t: 14, b: 32 };
+    var w = W - pad.l - pad.r, h = H - pad.t - pad.b;
+
+    var lim = 4;
+    rows.forEach(function (r) {
+      lim = Math.max(lim, Math.abs(g(r, "ivb")) + 2, Math.abs(g(r, "hb")) + 2);
+    });
+    lim = Math.ceil(lim / 5) * 5;
+
+    function X(v) { return pad.l + (v + lim) / (2 * lim) * w; }
+    function Y(v) { return pad.t + h - (v + lim) / (2 * lim) * h; }
+
+    var parts = ['<svg viewBox="0 0 ' + W + ' ' + H + '" class="movplot" role="img" aria-label="' +
+      'Movement plot: induced vertical break against arm-side horizontal break for each pitch in the arsenal.">'];
+
+    for (var t = -lim; t <= lim; t += lim / 2) {
+      if (t === 0) continue;
+      parts.push('<line x1="' + X(t).toFixed(1) + '" y1="' + pad.t + '" x2="' + X(t).toFixed(1) +
+                 '" y2="' + (pad.t + h) + '" class="mg"></line>');
+      parts.push('<line x1="' + pad.l + '" y1="' + Y(t).toFixed(1) + '" x2="' + (pad.l + w) +
+                 '" y2="' + Y(t).toFixed(1) + '" class="mg"></line>');
+    }
+    parts.push('<line x1="' + X(0).toFixed(1) + '" y1="' + pad.t + '" x2="' + X(0).toFixed(1) +
+               '" y2="' + (pad.t + h) + '" class="mx"></line>');
+    parts.push('<line x1="' + pad.l + '" y1="' + Y(0).toFixed(1) + '" x2="' + (pad.l + w) +
+               '" y2="' + Y(0).toFixed(1) + '" class="mx"></line>');
+
+    // A guide line from the reference fastball to each secondary: the length of
+    // that line is exactly the separation the model keys on.
+    if (refRow) {
+      rows.forEach(function (r) {
+        if (r === refRow) return;
+        parts.push('<line x1="' + X(g(refRow, "hb")).toFixed(1) + '" y1="' + Y(g(refRow, "ivb")).toFixed(1) +
+                   '" x2="' + X(g(r, "hb")).toFixed(1) + '" y2="' + Y(g(r, "ivb")).toFixed(1) +
+                   '" class="msep"></line>');
+      });
+    }
+
+    rows.forEach(function (r) {
+      var isRef = r === refRow;
+      var cx = X(g(r, "hb")), cy = Y(g(r, "ivb"));
+      // Area scales with usage, so the pitch he actually throws reads largest.
+      var rad = Math.max(5, Math.min(13, Math.sqrt(g(r, "n")) / 3.4));
+      // Name the direction rather than showing a signed number: "-16.1 in
+      // arm-side" is a sentence that argues with itself.
+      var hb = g(r, "hb");
+      var lateral = Math.abs(hb).toFixed(1) + " in " + (hb < 0 ? "arm-side run" : "glove-side break");
+      parts.push('<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + rad.toFixed(1) +
+                 '" class="mp' + (isRef ? " ref" : "") + '"><title>' + g(r, "pt") + ": " +
+                 fmt(g(r, "ivb"), 1) + ' in ride, ' + lateral + ', ' +
+                 fmt(g(r, "velo"), 1) + ' mph' + (isRef ? " (reference)" : "") + '</title></circle>');
+      parts.push('<text x="' + cx.toFixed(1) + '" y="' + (cy + 3.5).toFixed(1) +
+                 '" class="ml" text-anchor="middle">' + g(r, "pt") + '</text>');
+    });
+
+    parts.push('<text x="' + pad.l + '" y="' + (H - 6) + '" class="ma" text-anchor="start">&larr; arm side</text>');
+    parts.push('<text x="' + (pad.l + w) + '" y="' + (H - 6) + '" class="ma" text-anchor="end">glove side &rarr;</text>');
+    parts.push('<text x="10" y="' + (pad.t + h / 2) + '" class="ma" text-anchor="middle" transform="rotate(-90 10 ' +
+               (pad.t + h / 2) + ')">ride &rarr;</text>');
+    parts.push("</svg>");
+    return parts.join("");
+  }
+
   function showArsenal(pid, yr) {
     var rows = arsenalFor(pid, yr);
     if (!rows.length) return;
@@ -1133,27 +1277,55 @@
 
     document.getElementById("arsenalBody").innerHTML =
       "<h3>" + who + " \u00b7 " + yr + "</h3>" +
+      movementPlot(rows, refRow) +
       "<p class='cap'>" + total.toLocaleString() + " tracked pitches across " + rows.length +
       " scored pitch type" + (rows.length === 1 ? "" : "s") + ". " + note + floorNote + "</p>" +
       "<div class='tbl-wrap'><table class='mini'><thead><tr>" +
       head.map(function (h) { return "<th>" + h + "</th>"; }).join("") +
       "</tr></thead><tbody>" + body + "</tbody></table></div>";
-    document.getElementById("arsenal").hidden = false;
-    document.getElementById("arsenal").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    openDrawer();
   }
+
+  // Drawer plumbing: a scrim to click away, Escape to close, and focus returned
+  // to the row that opened it so keyboard use does not dump you at the top.
+  var lastTrigger = null;
+
+  function openDrawer() {
+    var d = document.getElementById("arsenal");
+    if (!document.getElementById("scrim")) {
+      var sc = document.createElement("button");
+      sc.id = "scrim"; sc.className = "scrim"; sc.type = "button";
+      sc.setAttribute("aria-label", "Close arsenal");
+      sc.addEventListener("click", closeDrawer);
+      document.body.appendChild(sc);
+    }
+    d.hidden = false;
+    d.setAttribute("role", "dialog");
+    d.setAttribute("aria-modal", "true");
+    document.getElementById("arsenalClose").focus();
+  }
+
+  function closeDrawer() {
+    document.getElementById("arsenal").hidden = true;
+    var sc = document.getElementById("scrim");
+    if (sc) sc.remove();
+    if (lastTrigger && document.contains(lastTrigger)) lastTrigger.focus();
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !document.getElementById("arsenal").hidden) closeDrawer();
+  });
 
   document.getElementById("tbody").addEventListener("click", function (e) {
     var tr = e.target && e.target.closest ? e.target.closest("tr.clickable") : null;
-    if (tr) showArsenal(Number(tr.getAttribute("data-pid")), Number(tr.getAttribute("data-yr")));
+    if (tr) { lastTrigger = tr; showArsenal(Number(tr.getAttribute("data-pid")), Number(tr.getAttribute("data-yr"))); }
   });
   document.getElementById("tbody").addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;
     var tr = e.target && e.target.closest ? e.target.closest("tr.clickable") : null;
-    if (tr) { e.preventDefault(); showArsenal(Number(tr.getAttribute("data-pid")), Number(tr.getAttribute("data-yr"))); }
+    if (tr) { e.preventDefault(); lastTrigger = tr; showArsenal(Number(tr.getAttribute("data-pid")), Number(tr.getAttribute("data-yr"))); }
   });
-  document.getElementById("arsenalClose").addEventListener("click", function () {
-    document.getElementById("arsenal").hidden = true;
-  });
+  document.getElementById("arsenalClose").addEventListener("click", closeDrawer);
 
   function render() {
     document.getElementById("yrVal").textContent = state.yrFrom === state.yrTo

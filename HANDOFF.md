@@ -367,6 +367,67 @@ One thing to know if the dashboard is ever published as an Artifact rather than
 hosted: the Artifact viewer sandbox blocks page-initiated downloads, so the CSV
 button would silently do nothing there. On Netlify it works.
 
+## Arsenal drawer and sample-size band
+
+Added 9 September 2026.
+
+**The arsenal is a flyout drawer now**, not an inline card, so the table stays
+in view while you read a pitcher. Scrim to click away, Escape to close, focus
+returned to the row that opened it. The substance that was already there
+(velocity, IVB, HB, VAA, whiff, grade, call, and separation from the fastball)
+is joined by a **movement plot**: every pitch as a circle sized by usage, the
+reference fastball highlighted, and a dashed line from it to each secondary
+whose length is exactly the separation the model keys on. A table of separation
+numbers tells you a slider is 10 mph slower and 24 inches away; the plot shows
+the shape of the whole repertoire at once, which is how it is actually read.
+
+**The parity plot has an uncertainty band** scaled to the current minimum-pitch
+filter. Whiff rate is a proportion over swings, so its standard error is
+sqrt(p(1-p)/swings); the band is 95% for a pitcher sitting exactly at the
+filter, which makes the slider a live demonstration. Swings are estimated from
+pitches using the median swing rate actually in view, not a constant, because a
+sweeper draws swings at a very different rate from a sinker.
+
+Verified against the arithmetic at three sample sizes, measured off the rendered
+canvas rather than assumed:
+
+```
+filter        swings   band drawn   band predicted
+250 pitches      120      8.5 pp        8.5 pp
+600 pitches      287      5.4 pp        5.5 pp
+1000 pitches     479      4.2 pp        4.3 pp
+```
+
+At the default 250-pitch filter the band is **+-7.2 points of whiff rate**,
+which is most of the league's spread. That is the paper's reliability finding
+made visible: a quarter-season sample cannot distinguish a pitcher from his own
+expectation.
+
+## A sign-convention bug worth knowing about
+
+`src/features.py` line 90 says "positive horizontal break means arm-side for
+every pitcher". **It does not.** The mirroring by handedness is correct and
+both hands agree, but the resulting positive direction is *glove* side:
+
+```
+raw Statcast pfx_x   RHP sinker -1.26 ft   LHP sinker +1.28 ft
+after mirroring      sinker -15.2 in       sweeper +14.0 in
+```
+
+Sinkers and changeups, which unambiguously run arm-side, come out negative;
+sweepers and curveballs, which break glove-side, come out positive. That
+matches Statcast's raw convention and the catcher's-view movement plots people
+are used to, so the data is fine and **the model is entirely unaffected** --
+the sign is consistent, so it only changes the sign of a coefficient.
+
+What it does affect is anything that reads the name and believes it.
+`pfx_x_armside`, `release_pos_x_armside` and `haa_armside` are all misnamed on
+the same line of reasoning. The dashboard now labels both ends of its movement
+axis and describes direction in words rather than signs, so nothing user-facing
+depends on the name. Renaming the columns would touch `SHAPE_FEATURES` and mean
+re-verifying every model output, so it was left alone deliberately rather than
+fixed in passing.
+
 ## Searching a pitcher gives a verdict
 
 Added 9 September 2026. The boards only ever list twenty names each way, so
