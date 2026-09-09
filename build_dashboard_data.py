@@ -80,6 +80,10 @@ OUT = OUTPUT_DIR / "dashboard"
 # Columns exported, in order. Short keys keep the embedded payload small.
 COLUMNS = [
     ("name", "player_name"),
+    # Pitcher id, so the arsenal view groups by person rather than by name.
+    # There are two Varlands throwing in 2026; grouping on the label merges
+    # them and silently invents a repertoire neither of them has.
+    ("pid", "pitcher"),
     ("yr", "game_year"),
     ("pt", "pitch_type"),
     ("age", "age"),
@@ -95,9 +99,36 @@ COLUMNS = [
     ("rv", "run_value_pitcher"),
     ("exp", "shape_exp"),
     ("edge", "shape_edge"),
+    # 20-80 scouting grade on the shape expectation, within pitch type and
+    # season. Deliberately not a 100-scale "plus" index: those read as Stuff+ or
+    # PitchingBot, which are fitted on far richer inputs against different
+    # targets, and inviting that comparison would oversell what this is.
+    ("grade", "shape_grade"),
+    # How far this pitch sits from the pitcher's own fastball. These are model
+    # inputs now, and they are the numbers a pitching coach actually discusses.
+    ("vsep", "velo_sep"),
+    ("msep", "mov_sep"),
+    ("rsep", "rel_sep"),
 ]
 ROUND = {"age": 0, "velo": 1, "ivb": 1, "hb": 1, "vaa": 2, "ext": 1,
-         "whiff": 4, "rv": 5, "exp": 4, "edge": 5}
+         "whiff": 4, "rv": 5, "exp": 4, "edge": 5, "grade": 0,
+         "vsep": 1, "msep": 1, "rsep": 2}
+
+
+def scouting_grade(values: pd.Series) -> pd.Series:
+    """The 20-80 scale, on its actual convention: 50 average, 10 per standard
+    deviation, clipped at the ends.
+
+    Graded within pitch type and season, which is the only comparison that
+    means anything. A curveball's induced vertical break is negative and a
+    four-seam's is strongly positive, so a grade pooled across pitch types would
+    rank pitch types rather than pitchers. Seasons are separated too, because
+    league velocity has moved 1.7 mph over the window.
+    """
+    sd = values.std()
+    if not np.isfinite(sd) or sd == 0:
+        return pd.Series(50.0, index=values.index)
+    return (50 + 10 * (values - values.mean()) / sd).clip(20, 80)
 
 
 def _verdict(t: float) -> str:
@@ -324,6 +355,12 @@ def main() -> None:
         if n_clipped:
             log.info("%s: clipped %d shape expectations to [%.3f, %.3f]", pt, n_clipped, lo, hi)
         table["shape_exp"] = clipped
+
+        # Graded after clipping, so a wild extrapolation cannot stretch the
+        # scale everyone else is measured against.
+        table["shape_grade"] = (
+            table.groupby("game_year")["shape_exp"].transform(scouting_grade)
+        )
 
         # The edge model is fit on the most recent complete seasons, then
         # applied to every row. See TRAIN_WINDOW for why it is not all history.

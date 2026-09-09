@@ -86,6 +86,21 @@
   /* A dot on the chip carries how well the edge validates for that pitch, so
      the caveat travels with the control rather than living in a footnote. */
   .chip .v { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 0.32rem; vertical-align: middle; }
+  .linkish { background: none; border: 0; padding: 0; margin-left: 0.6rem; font: inherit;
+    font-size: 0.82rem; color: var(--accent); cursor: pointer; text-decoration: underline; }
+  .linkish:hover { opacity: 0.75; }
+  tr.clickable { cursor: pointer; }
+  tr.clickable:hover td { background: var(--panel); }
+  tr.clickable:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .arsenal { position: relative; margin-bottom: 1.1rem; }
+  .arsenal .close { position: absolute; top: 0.9rem; right: 1rem; margin: 0; }
+  .arsenal h3 { margin: 0 0 0.2rem; font-size: 1.02rem; }
+  .arsenal .tbl-wrap { overflow-x: auto; }
+  table.mini { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  table.mini th, table.mini td { padding: 0.34rem 0.5rem; text-align: right; white-space: nowrap;
+    border-bottom: 1px solid var(--rule); }
+  table.mini th:first-child, table.mini td:first-child { text-align: left; }
+  table.mini th { color: var(--ink-3); font-weight: 600; }
   .chip .v.validated { background: var(--good); }
   .chip .v.promising { background: transparent; box-shadow: inset 0 0 0 2px var(--good); }
   .chip .v[class*="no signal"], .chip .v.nosignal { background: var(--spin); }
@@ -267,6 +282,10 @@
       <div class="chips" id="hand"></div>
     </div>
     <div class="f">
+      <label for="q">Find a pitcher</label>
+      <input type="search" id="q" placeholder="name contains…" autocomplete="off">
+    </div>
+    <div class="f">
       <label for="sortBy">Rank by</label>
       <select id="sortBy">
         <option value="edge">Shape edge (best first)</option>
@@ -292,6 +311,10 @@
       <dd>Share of swings the hitter missed entirely, as a percentage.</dd>
       <dt>Shape exp</dt>
       <dd>The whiff rate this pitcher's ball flight alone predicts, ignoring what actually happened to him. Think of it as what the pitch should do.</dd>
+      <dt>Grade</dt>
+      <dd>The shape expectation on the 20&ndash;80 scouting scale, where 50 is average and every 10 points is one standard deviation. Graded against the same pitch type in the same season, because a curveball's break is negative and a four-seam's is not, and league velocity has moved nearly two miles an hour across the window. <b>This is not a stuff model.</b> Stuff+, PitchingBot and the Driveline model use far more information and are fitted against different targets; this grades ball flight and nothing else. It knows nothing about location, sequencing or how a pitch plays off the rest of an arsenal, and location outranks every shape metric here by roughly fifty to one.</dd>
+      <dt>vs FB</dt>
+      <dd>How far a pitch sits from the fastball the pitcher throws most: miles per hour slower, inches of movement apart, and feet of release point apart. These are what the model uses to judge secondary pitches, on the reasoning that a slider misses bats by how late it stops resembling the fastball rather than by its own shape.</dd>
       <dt>Edge</dt>
       <dd>What the shape argues for beyond simple regression to the mean. Positive means the stuff is better than the results; negative means the results are running ahead of the stuff.</dd>
       <dt>Why filtering<br>does not refit</dt>
@@ -334,7 +357,13 @@
     </div>
 
     <div class="card">
-      <h2>Ranked <span id="rankCount" style="color:var(--ink-3)"></span></h2>
+      <section id="arsenal" class="card arsenal" hidden>
+        <button type="button" id="arsenalClose" class="linkish close">Close</button>
+        <div id="arsenalBody"></div>
+      </section>
+
+      <h2>Ranked <span id="rankCount" style="color:var(--ink-3)"></span>
+        <button type="button" id="csv" class="linkish">Download CSV</button></h2>
       <div class="tbl-scroll">
         <table id="tbl">
           <thead><tr id="thead"></tr></thead>
@@ -378,7 +407,8 @@
     ageFrom: AGE_MIN, ageTo: AGE_MAX,
     minN: 250,
     hand: ["R", "L"],
-    sort: "edge"
+    sort: "edge",
+    q: ""
   };
 
   // ---------- filter controls ----------
@@ -468,7 +498,8 @@
         && yr >= state.yrFrom && yr <= state.yrTo
         && (age == null || (age >= state.ageFrom && age <= state.ageTo))
         && g(r, "n") >= state.minN
-        && state.hand.indexOf(g(r, "hand")) > -1;
+        && state.hand.indexOf(g(r, "hand")) > -1
+        && (!state.q || (g(r, "name") || "").toLowerCase().indexOf(state.q) > -1);
     });
   }
 
@@ -510,7 +541,7 @@
   var HEAD = [
     ["name", "Pitcher"], ["yr", "Yr"], ["pt", "Pitch"], ["age", "Age"], ["hand", "T"],
     ["n", "Pitches"], ["velo", "Velo"], ["ivb", "IVB"], ["vaa", "VAA"],
-    ["whiff", "Whiff"], ["exp", "Shape exp"], ["edge", "Edge"]
+    ["whiff", "Whiff"], ["exp", "Shape exp"], ["grade", "Grade"], ["edge", "Edge"]
   ];
 
   function renderTable(rows) {
@@ -521,13 +552,13 @@
 
     var body = document.getElementById("tbody");
     if (!rows.length) {
-      body.innerHTML = "<tr><td colspan='12'><div class='empty'>No pitcher-seasons match these filters.</div></td></tr>";
+      body.innerHTML = "<tr><td colspan='13'><div class='empty'>No pitcher-seasons match these filters.</div></td></tr>";
       return;
     }
     body.innerHTML = rows.slice(0, 300).map(function (r) {
       var edge = g(r, "edge");
       var cls = edge == null ? "" : (edge > 0 ? "pos" : "neg");
-      return "<tr>"
+      return "<tr class='clickable' data-pid='" + g(r, "pid") + "' data-yr='" + g(r, "yr") + "' tabindex='0'>"
         + "<td>" + g(r, "name") + "</td>"
         + "<td>" + g(r, "yr") + "</td>"
         + "<td>" + g(r, "pt") + "</td>"
@@ -539,6 +570,7 @@
         + "<td>" + fmt(g(r, "vaa"), 2) + "</td>"
         + "<td>" + (100 * g(r, "whiff")).toFixed(1) + "</td>"
         + "<td>" + (g(r, "exp") == null ? "—" : (100 * g(r, "exp")).toFixed(1)) + "</td>"
+        + "<td>" + (g(r, "grade") == null ? "—" : g(r, "grade")) + "</td>"
         + "<td class='" + cls + "'>" + (edge == null ? "—" : (edge > 0 ? "+" : "") + edge.toFixed(4)) + "</td>"
         + "</tr>";
     }).join("");
@@ -841,6 +873,144 @@
     prog.innerHTML = up.map(function (r) { return playerCard(r, "up"); }).join("") + scale;
     reg.innerHTML = down.map(function (r) { return playerCard(r, "down"); }).join("") + scale;
   }
+
+  // ---------- search, export, arsenal ----------
+
+  var qBox = document.getElementById("q");
+  if (qBox) {
+    qBox.addEventListener("input", function () {
+      state.q = this.value.trim().toLowerCase();
+      render();
+    });
+  }
+
+  // Export the filtered view, not the visible 300. Someone who filters to a
+  // group and clicks download wants the group.
+  //
+  // Every row carries the validation verdict for its pitch type. Once this file
+  // is in someone else's notebook, the badge and the caveat panel are gone, and
+  // a curveball edge that was never proven would read exactly like a four-seam
+  // one that was.
+  function toCsv(rows) {
+    var cols = ["name", "pid", "yr", "pt", "age", "hand", "n", "sw", "velo", "ivb", "hb",
+                "vaa", "ext", "whiff", "rv", "exp", "grade", "edge", "vsep", "msep", "rsep"];
+    var head = cols.concat(["edge_verdict", "edge_t", "edge_pairs", "gap_reverses_pct"]);
+    var out = [head.join(",")];
+    rows.forEach(function (r) {
+      var vd = (META.validation && META.validation[g(r, "pt")]) || {};
+      var pers = (META.persistence && (META.persistence[g(r, "pt")] || META.persistence._all)) || {};
+      var line = cols.map(function (c) {
+        var v = g(r, c);
+        if (v == null) return "";
+        return (typeof v === "string" && v.indexOf(",") > -1) ? '"' + v + '"' : v;
+      });
+      line.push(vd.verdict == null ? "" : vd.verdict);
+      line.push(vd.t == null ? "" : vd.t);
+      line.push(vd.n == null ? "" : vd.n);
+      line.push(pers.reversal_pct == null ? "" : pers.reversal_pct);
+      out.push(line.join(","));
+    });
+    return out.join("\n");
+  }
+
+  var csvBtn = document.getElementById("csv");
+  if (csvBtn) {
+    csvBtn.addEventListener("click", function () {
+      var rows = filtered().slice().sort(SORTS[state.sort] || SORTS.edge);
+      var blob = new Blob([toCsv(rows)], { type: "text/csv;charset=utf-8" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "pitch-shape-" + state.pt.join("-") + "-" + state.yrFrom + "-" + state.yrTo + ".csv";
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+    });
+  }
+
+  // The arsenal view. Rows in the table are one pitch; a pitcher is a
+  // repertoire, and the question a scout actually asks is how the pieces sit
+  // next to each other.
+  function arsenalFor(pid, yr) {
+    return ROWS.filter(function (r) { return g(r, "pid") === pid && g(r, "yr") === yr; })
+               .sort(function (a, b) { return g(b, "n") - g(a, "n"); });
+  }
+
+  function showArsenal(pid, yr) {
+    var rows = arsenalFor(pid, yr);
+    if (!rows.length) return;
+    var who = g(rows[0], "name");
+    var total = rows.reduce(function (t, r) { return t + g(r, "n"); }, 0);
+
+    // The pitch the separation columns are measured against, so the table can
+    // say which row is the reference rather than leaving zeros unexplained.
+    var refRow = null;
+    rows.forEach(function (r) {
+      if ((g(r, "pt") === "FF" || g(r, "pt") === "SI") &&
+          (!refRow || g(r, "n") > g(refRow, "n"))) refRow = r;
+    });
+
+    var head = ["Pitch", "Pitches", "Use", "Velo", "IVB", "HB", "VAA", "Whiff", "Shape exp",
+                "Grade", "Edge", "vs FB: mph", "move", "release"];
+    var body = rows.map(function (r) {
+      var isRef = r === refRow;
+      var edge = g(r, "edge");
+      var vd = (META.validation && META.validation[g(r, "pt")]) || {};
+      var cells = [
+        "<b>" + g(r, "pt") + "</b><span class='v " + (vd.verdict || "untested").replace(/\s+/g, "") + "'></span>",
+        g(r, "n").toLocaleString(),
+        (100 * g(r, "n") / total).toFixed(0) + "%",
+        fmt(g(r, "velo"), 1),
+        fmt(g(r, "ivb"), 1),
+        fmt(g(r, "hb"), 1),
+        fmt(g(r, "vaa"), 2),
+        (100 * g(r, "whiff")).toFixed(1),
+        g(r, "exp") == null ? "\u2014" : (100 * g(r, "exp")).toFixed(1),
+        g(r, "grade") == null ? "\u2014" : g(r, "grade"),
+        edge == null ? "\u2014" : (edge > 0 ? "+" : "") + edge.toFixed(4),
+        isRef ? "<i>reference</i>" : fmt(g(r, "vsep"), 1),
+        isRef ? "" : fmt(g(r, "msep"), 1),
+        isRef ? "" : fmt(g(r, "rsep"), 2)
+      ];
+      var cls = edge == null ? "" : (edge > 0 ? "pos" : "neg");
+      return "<tr>" + cells.map(function (c, i) {
+        return "<td" + (i === 10 ? " class='" + cls + "'" : "") + ">" + c + "</td>";
+      }).join("") + "</tr>";
+    }).join("");
+
+    var note = refRow
+      ? "Separation is measured against his " + g(refRow, "pt") +
+        ", the fastball hitters time against. That is what the model uses to judge the secondaries."
+      : "No qualifying fastball this season, so separation cannot be measured and the secondaries are judged on shape alone.";
+
+    // Only pitch types clearing the volume floor are in the dataset at all, so
+    // this is his scored repertoire rather than everything he threw. Without
+    // saying so, a pitcher with one qualifying pitch reads as a one-pitch
+    // pitcher, which is usually wrong.
+    var floorNote = " Pitches thrown fewer than " + META.min_pitches +
+      " times that season are not scored and do not appear here.";
+
+    document.getElementById("arsenalBody").innerHTML =
+      "<h3>" + who + " \u00b7 " + yr + "</h3>" +
+      "<p class='cap'>" + total.toLocaleString() + " tracked pitches across " + rows.length +
+      " scored pitch type" + (rows.length === 1 ? "" : "s") + ". " + note + floorNote + "</p>" +
+      "<div class='tbl-wrap'><table class='mini'><thead><tr>" +
+      head.map(function (h) { return "<th>" + h + "</th>"; }).join("") +
+      "</tr></thead><tbody>" + body + "</tbody></table></div>";
+    document.getElementById("arsenal").hidden = false;
+    document.getElementById("arsenal").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  document.getElementById("tbody").addEventListener("click", function (e) {
+    var tr = e.target && e.target.closest ? e.target.closest("tr.clickable") : null;
+    if (tr) showArsenal(Number(tr.getAttribute("data-pid")), Number(tr.getAttribute("data-yr")));
+  });
+  document.getElementById("tbody").addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    var tr = e.target && e.target.closest ? e.target.closest("tr.clickable") : null;
+    if (tr) { e.preventDefault(); showArsenal(Number(tr.getAttribute("data-pid")), Number(tr.getAttribute("data-yr"))); }
+  });
+  document.getElementById("arsenalClose").addEventListener("click", function () {
+    document.getElementById("arsenal").hidden = true;
+  });
 
   function render() {
     document.getElementById("yrVal").textContent = state.yrFrom === state.yrTo

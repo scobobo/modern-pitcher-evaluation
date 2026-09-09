@@ -335,6 +335,38 @@ pitchers who threw at least 250 four-seamers, which is a survivorship filter.
 
 ---
 
+## Dashboard features added 9 September 2026
+
+Three requests from Scott, all shipped.
+
+**Arsenal drilldown.** Clicking any row opens the pitcher's full scored
+repertoire for that season, sorted by usage, with the fastball-separation
+columns showing how far each secondary sits from the pitch hitters time
+against. It groups on `pid`, not name: there are two Varlands throwing in 2026
+and grouping on the label would invent a repertoire neither of them has. The
+panel names which pitch is the reference, and states that anything under the
+150-pitch floor is not scored and therefore absent, so a pitcher with one
+qualifying pitch does not read as a one-pitch pitcher.
+
+**Shape grade, 20-80.** The shape expectation on the standard scouting scale,
+50 average and 10 points per standard deviation, graded within pitch type and
+season. Deliberately not a 100-scale "plus" index: that reads as Stuff+ or
+PitchingBot, which are fitted on far richer inputs against different targets,
+and inviting the comparison would oversell what this is. The glossary says so
+outright, including that it knows nothing about location, which outranks every
+shape metric here by roughly fifty to one.
+
+**Search and CSV export.** Name filter, and a download of the whole filtered
+set rather than the visible 300. Every exported row carries `edge_verdict`,
+`edge_t`, `edge_pairs` and `gap_reverses_pct` for its pitch type. Once the file
+is in someone else's notebook the badge and the caveat panel are gone, and an
+unproven curveball edge would otherwise read exactly like a validated four-seam
+one.
+
+One thing to know if the dashboard is ever published as an Artifact rather than
+hosted: the Artifact viewer sandbox blocks page-initiated downloads, so the CSV
+button would silently do nothing there. On Netlify it works.
+
 ## Where things stand
 
 The paper is published and citable. The repo is public and in sync. The
