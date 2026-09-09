@@ -95,6 +95,15 @@
   /* A dot on the chip carries how well the edge validates for that pitch, so
      the caveat travels with the control rather than living in a footnote. */
   .chip .v { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 0.32rem; vertical-align: middle; }
+  td.call { font-family: var(--font-mono); font-size: 0.72rem; white-space: nowrap; }
+  td.call.muted { color: var(--ink-3); }
+  td.call.pos { color: var(--good); }
+  td.call.neg { color: var(--bad); }
+  td.call.soft { opacity: 0.72; }
+  .qmark { color: var(--ink-3); margin-left: 0.15rem; }
+  .standing { margin: 0 0 0.9rem; padding: 0.7rem 0.85rem; border-left: 3px solid var(--accent);
+    background: var(--panel); font-size: 0.86rem; line-height: 1.5; }
+  .standing b { font-weight: 600; }
   .linkish { background: none; border: 0; padding: 0; margin-left: 0.6rem; font: inherit;
     font-size: 0.82rem; color: var(--accent); cursor: pointer; text-decoration: underline; }
   .linkish:hover { opacity: 0.75; }
@@ -366,6 +375,8 @@
     </div>
 
     <div class="card">
+      <p class="standing" id="standing" hidden></p>
+
       <section id="arsenal" class="card arsenal" hidden>
         <button type="button" id="arsenalClose" class="linkish close">Close</button>
         <div id="arsenalBody"></div>
@@ -436,6 +447,44 @@
       mn.textContent = "It was trained once on the " + META.train_seasons[0] + "\u2013" + META.train_seasons[1] +
         " seasons, the most recent " + META.train_window + " complete years, and applied to every row.";
   })();
+
+  // Where a pitcher-season stands, in the language the boards use. Computed
+  // from a fixed percentile so the answer does not move when a filter does.
+  //
+  // "Candidate" has to mean "the boards would name him", which is a tail
+  // position, not merely a positive edge. Roughly half the population has an
+  // edge pointing one way or the other and almost none of them are candidates.
+  // "CU, SI" reads like a truncated list; "CU and SI" reads like a sentence.
+  function joinList(items) {
+    if (items.length <= 1) return items.join("");
+    if (items.length === 2) return items[0] + " and " + items[1];
+    return items.slice(0, -1).join(", ") + " and " + items[items.length - 1];
+  }
+
+  function callFor(r) {
+    var pct = g(r, "epct");
+    var vd = (META.validation && META.validation[g(r, "pt")]) || {};
+    var soft = vd.verdict !== "validated";
+    var floor = META.nameable_pitches || 300;
+    var edge = META.candidate_pct || 10;
+    if (pct == null) {
+      return { label: "\u2014", cls: "muted", kind: "none",
+               why: "Under " + floor + " pitches, so the boards will not name him." };
+    }
+    if (pct >= 100 - edge) {
+      return { label: "Progression", cls: soft ? "pos soft" : "pos", kind: "prog", soft: soft,
+               why: "Top " + edge + "% of " + g(r, "pt") + " by edge that season ("
+                    + Math.round(pct) + "th percentile). The ball is doing more than the results show." };
+    }
+    if (pct <= edge) {
+      return { label: "Regression", cls: soft ? "neg soft" : "neg", kind: "regr", soft: soft,
+               why: "Bottom " + edge + "% of " + g(r, "pt") + " by edge that season ("
+                    + Math.round(pct) + "th percentile). The results are running ahead of the ball flight." };
+    }
+    return { label: "\u2014", cls: "muted", kind: "none",
+             why: "Middle of the pack: " + Math.round(pct) + "th percentile of " + g(r, "pt")
+                  + " that season, not far enough out to be a candidate." };
+  }
 
   function verdictTitle(pitch, vd) {
     if (vd.verdict === "validated")
@@ -550,8 +599,88 @@
   var HEAD = [
     ["name", "Pitcher"], ["yr", "Yr"], ["pt", "Pitch"], ["age", "Age"], ["hand", "T"],
     ["n", "Pitches"], ["velo", "Velo"], ["ivb", "IVB"], ["vaa", "VAA"],
-    ["whiff", "Whiff"], ["exp", "Shape exp"], ["grade", "Grade"], ["edge", "Edge"]
+    ["whiff", "Whiff"], ["exp", "Shape exp"], ["grade", "Grade"], ["edge", "Edge"], ["call", "Call"]
   ];
+
+  // A search that lands on one pitcher should answer the question directly
+  // rather than making him read a percentile column. The boards only ever show
+  // twenty names each way, so without this a searched pitcher who is not in
+  // either tail gets no answer at all.
+  // Names the season and says it is the most recent, so a reader whose arsenal
+  // panel is open on an earlier year knows why the two differ.
+  function lead(name, yr, rows) {
+    var years = {};
+    rows.forEach(function (r) { years[g(r, "yr")] = 1; });
+    var multi = Object.keys(years).length > 1;
+    return "In " + yr + (multi ? ", his most recent season here, " : ", ") + name + " is";
+  }
+
+  function renderStanding(rows) {
+    var host = document.getElementById("standing");
+    if (!host) return;
+    var ids = {};
+    rows.forEach(function (r) { ids[g(r, "pid")] = 1; });
+    var who = Object.keys(ids);
+    if (!state.q || !rows.length) { host.hidden = true; return; }
+
+    // A partial name usually matches several people ("ober" reaches eleven,
+    // only one of them Bailey Ober). Saying so beats silently showing nothing,
+    // which reads as the feature being broken.
+    if (who.length > 1) {
+      var names = [];
+      rows.forEach(function (r) { if (names.indexOf(g(r, "name")) < 0) names.push(g(r, "name")); });
+      names.sort();
+      host.innerHTML = "<b>" + names.length + " pitchers match &ldquo;" + state.q + "&rdquo;.</b> "
+        + "Narrow it for a verdict, or read the Call column: "
+        + names.slice(0, 6).join(", ") + (names.length > 6 ? ", and " + (names.length - 6) + " more." : ".");
+      host.hidden = false;
+      return;
+    }
+
+    var name = g(rows[0], "name");
+    var latest = rows.reduce(function (a, b) { return g(b, "yr") > g(a, "yr") ? b : a; });
+    var yr = g(latest, "yr");
+    var season = rows.filter(function (r) { return g(r, "yr") === yr; });
+
+    var prog = [], regr = [], quiet = [], thin = [];
+    season.forEach(function (r) {
+      var c = callFor(r);
+      var tag = g(r, "pt") + (c.soft ? "*" : "");
+      if (c.kind === "prog") prog.push(tag);
+      else if (c.kind === "regr") regr.push(tag);
+      else if (g(r, "epct") == null) thin.push(g(r, "pt"));
+      else quiet.push(g(r, "pt"));
+    });
+
+    var bits = [];
+    if (prog.length) bits.push("<b class='up'>progression candidate</b> on his " + joinList(prog));
+    if (regr.length) bits.push("<b class='down'>regression candidate</b> on his " + joinList(regr));
+    var head;
+    if (bits.length) {
+      head = lead(name, yr, rows) + " a " + bits.join(", and a ") + ".";
+    } else if (quiet.length) {
+      head = lead(name, yr, rows) + " not a candidate either way. His "
+           + joinList(quiet)
+           + (quiet.length === 1 ? " sits" : quiet.length === 2 ? " both sit" : " all sit")
+           + " in the middle of the pack.";
+    } else {
+      head = lead(name, yr, rows).replace(" is", " has") + " no pitch clearing the "
+           + (META.nameable_pitches || 300) + "-pitch line, so the boards would not name him.";
+    }
+
+    var tail = [];
+    if (quiet.length && bits.length) tail.push("His " + joinList(quiet) + " " + (quiet.length > 1 ? "are" : "is") + " unremarkable.");
+    // Only worth naming the thin pitches when something else qualified; if
+    // nothing did, the headline has already said exactly this.
+    if (thin.length && (bits.length || quiet.length))
+      tail.push(joinList(thin) + " " + (thin.length > 1 ? "fall" : "falls") + " under the "
+      + (META.nameable_pitches || 300) + "-pitch line and " + (thin.length > 1 ? "are" : "is") + " not ranked.");
+    if (prog.concat(regr).join("").indexOf("*") > -1)
+      tail.push("A star marks a pitch whose edge is not validated, so that call is descriptive only.");
+
+    host.innerHTML = head + (tail.length ? " " + tail.join(" ") : "");
+    host.hidden = false;
+  }
 
   function renderTable(rows) {
     document.getElementById("thead").innerHTML = HEAD.map(function (h) {
@@ -561,12 +690,13 @@
 
     var body = document.getElementById("tbody");
     if (!rows.length) {
-      body.innerHTML = "<tr><td colspan='13'><div class='empty'>No pitcher-seasons match these filters.</div></td></tr>";
+      body.innerHTML = "<tr><td colspan='14'><div class='empty'>No pitcher-seasons match these filters.</div></td></tr>";
       return;
     }
     body.innerHTML = rows.slice(0, 300).map(function (r) {
       var edge = g(r, "edge");
       var cls = edge == null ? "" : (edge > 0 ? "pos" : "neg");
+      var call = callFor(r);
       return "<tr class='clickable' data-pid='" + g(r, "pid") + "' data-yr='" + g(r, "yr") + "' tabindex='0'>"
         + "<td>" + g(r, "name") + "</td>"
         + "<td>" + g(r, "yr") + "</td>"
@@ -581,6 +711,8 @@
         + "<td>" + (g(r, "exp") == null ? "—" : (100 * g(r, "exp")).toFixed(1)) + "</td>"
         + "<td>" + (g(r, "grade") == null ? "—" : g(r, "grade")) + "</td>"
         + "<td class='" + cls + "'>" + (edge == null ? "—" : (edge > 0 ? "+" : "") + edge.toFixed(4)) + "</td>"
+        + "<td class='call " + call.cls + "' title=\"" + call.why + "\">" + call.label
+        + (call.soft ? "<span class='qmark'>*</span>" : "") + "</td>"
         + "</tr>";
     }).join("");
   }
@@ -958,7 +1090,7 @@
     });
 
     var head = ["Pitch", "Pitches", "Use", "Velo", "IVB", "HB", "VAA", "Whiff", "Shape exp",
-                "Grade", "Edge", "vs FB: mph", "move", "release"];
+                "Grade", "Edge", "Call", "vs FB: mph", "move", "release"];
     var body = rows.map(function (r) {
       var isRef = r === refRow;
       var edge = g(r, "edge");
@@ -975,6 +1107,8 @@
         g(r, "exp") == null ? "\u2014" : (100 * g(r, "exp")).toFixed(1),
         g(r, "grade") == null ? "\u2014" : g(r, "grade"),
         edge == null ? "\u2014" : (edge > 0 ? "+" : "") + edge.toFixed(4),
+        "<span class='call " + callFor(r).cls + "' title=\"" + callFor(r).why + "\">"
+          + callFor(r).label + (callFor(r).soft ? "<span class='qmark'>*</span>" : "") + "</span>",
         isRef ? "<i>reference</i>" : fmt(g(r, "vsep"), 1),
         isRef ? "" : fmt(g(r, "msep"), 1),
         isRef ? "" : fmt(g(r, "rsep"), 2)
@@ -1033,6 +1167,7 @@
     renderTiles(rows);
     renderTakeaway(rows);
     renderBoards(rows);
+    renderStanding(rows);
     renderTable(rows);
     renderScatter(rows);
   }

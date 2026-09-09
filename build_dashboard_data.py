@@ -50,6 +50,11 @@ MIN_SWINGS = 60
 # Measured at 150 the gap looks far more temporary than it is, because thin
 # samples carry more noise and noise always reverses.
 NAMEABLE_PITCHES = 300
+# How far into the tail a pitcher has to be before the boards would name him.
+# The boards list twenty each way, which in a typical season-and-pitch-type pool
+# of roughly 250 qualifying pitchers is about the top and bottom 8%. Ten is the
+# round number nearest that and is far easier to state to a reader.
+CANDIDATE_PCT = 10
 # The edge model trains on a rolling window of recent seasons rather than all
 # history. The relationship between shape and results drifts -- league velocity
 # is up 1.7 mph since 2015 and whiff rate is up 2.4 points -- so seasons from a
@@ -104,6 +109,11 @@ COLUMNS = [
     # PitchingBot, which are fitted on far richer inputs against different
     # targets, and inviting that comparison would oversell what this is.
     ("grade", "shape_grade"),
+    # Where this row's edge sits among comparable pitchers, 0-100. Fixed at
+    # build time against pitch type and season, not against whatever the user
+    # has filtered to: a verdict that changes when you move a slider is not a
+    # verdict.
+    ("epct", "edge_pct"),
     # How far this pitch sits from the pitcher's own fastball. These are model
     # inputs now, and they are the numbers a pitching coach actually discusses.
     ("vsep", "velo_sep"),
@@ -112,7 +122,24 @@ COLUMNS = [
 ]
 ROUND = {"age": 0, "velo": 1, "ivb": 1, "hb": 1, "vaa": 2, "ext": 1,
          "whiff": 4, "rv": 5, "exp": 4, "edge": 5, "grade": 0,
-         "vsep": 1, "msep": 1, "rsep": 2}
+         "vsep": 1, "msep": 1, "rsep": 2, "epct": 0}
+
+
+def edge_percentile(table: pd.DataFrame) -> pd.Series:
+    """Rank each row's edge against the pitchers it would actually be listed beside.
+
+    Ranked within pitch type and season, and only among rows clearing the
+    naming threshold, because that is the population the boards draw from.
+    Rows below the threshold get no percentile at all rather than a flattering
+    one computed against a pool they are not eligible for.
+    """
+    out = pd.Series(np.nan, index=table.index, dtype=float)
+    nameable = (table["n_pitches"] >= NAMEABLE_PITCHES) & table["shape_edge"].notna()
+    if not nameable.any():
+        return out
+    sub = table.loc[nameable]
+    out.loc[nameable] = sub.groupby("game_year")["shape_edge"].rank(pct=True) * 100
+    return out
 
 
 def scouting_grade(values: pd.Series) -> pd.Series:
@@ -362,6 +389,7 @@ def main() -> None:
             table.groupby("game_year")["shape_exp"].transform(scouting_grade)
         )
 
+
         # The edge model is fit on the most recent complete seasons, then
         # applied to every row. See TRAIN_WINDOW for why it is not all history.
         recent = [y for y in COMPLETE_SEASONS if y > max(COMPLETE_SEASONS) - TRAIN_WINDOW]
@@ -384,6 +412,9 @@ def main() -> None:
         else:
             log.warning("%s: only %d training pairs, no edge computed", pt, len(train))
             table["shape_edge"] = np.nan
+
+        # After the edge exists, not before: ranking needs the thing it ranks.
+        table["edge_pct"] = edge_percentile(table)
 
         frames.append(table)
         log.info("%s: %d pitcher-seasons", pt, len(table))
@@ -467,6 +498,8 @@ def main() -> None:
             "min_swings": MIN_SWINGS,
             "target": TARGET,
             "train_window": TRAIN_WINDOW,
+            "nameable_pitches": NAMEABLE_PITCHES,
+            "candidate_pct": CANDIDATE_PCT,
             "train_seasons": [int(min(recent_seasons)), int(max(recent_seasons))],
             "tracked_pitches": int(len(data)),
             "n_rows": len(rows),

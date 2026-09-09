@@ -367,6 +367,36 @@ One thing to know if the dashboard is ever published as an Artifact rather than
 hosted: the Artifact viewer sandbox blocks page-initiated downloads, so the CSV
 button would silently do nothing there. On Netlify it works.
 
+## Searching a pitcher gives a verdict
+
+Added 9 September 2026. The boards only ever list twenty names each way, so
+searching a specific pitcher previously told you nothing about where he stood.
+Now every row carries a **Call** column, and a search that lands on one pitcher
+gets a plain sentence above the table: "In 2026, his most recent season here,
+Louis Varland is a progression candidate on his FF."
+
+The standing is computed from `epct`, a percentile fixed at build time within
+pitch type and season, among rows clearing the 300-pitch naming line. Fixed at
+build time on purpose: a verdict that changes when you drag a slider is not a
+verdict. Top and bottom 10% are candidates, which is the round number nearest
+the twenty-of-roughly-250 the boards actually name.
+
+Four cases it has to get right, all handled:
+
+- **Below the line.** No percentile at all rather than one computed against a
+  pool the pitcher is not eligible for. Says so.
+- **Middle of the pack.** Explicitly not a candidate, rather than silence that
+  reads as a broken feature. Roughly half the population has an edge pointing
+  somewhere and almost none of them are candidates.
+- **Ambiguous search.** "ober" reaches eleven pitchers, only one of them Bailey
+  Ober. Lists them instead of showing nothing.
+- **Unvalidated pitch type.** A star on the call, because a curveball
+  progression call rests on t = 1.8, not on the four-seam evidence.
+
+The standing describes the most recent season and says so, because the arsenal
+panel below it may be open on an earlier one, and two unexplained verdicts on
+screen read as a bug.
+
 ## Dashboard link preview
 
 `site-dashboard/` now carries `dashboard-card.jpg` (2400x1260 RGB JPEG) and a
