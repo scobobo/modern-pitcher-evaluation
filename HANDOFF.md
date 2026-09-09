@@ -376,11 +376,14 @@ drift from the count in the page. The card is its own design rather than the
 paper's: it leads with the actual-versus-expected scatter, because the link has
 to say "this is a tool you can filter" in one glance.
 
-**`DASHBOARD_URL` in `src/config.py` is currently a guess**
-(`https://pitch-shape-explorer.netlify.app`). og:image is fetched by the
-scraper rather than resolved by the browser, so if the real host differs the
-link renders with no card at all, and the failure is silent: the page itself
-still serves a clean 200. Set it before sharing the link, then rebuild.
+`DASHBOARD_URL` in `src/config.py` is confirmed correct as of 9 September 2026.
+Verified live: the card returns HTTP 200 as `image/jpeg`, 399,742 bytes, RGB
+with no alpha, 2400x1260 at the 1.91:1 ratio, and the page carries
+`<meta name="image" property="og:image">` in the form LinkedIn's guidance asks
+for. All three faults that produced a blank card on the paper are absent here.
+
+Unlike the paper, this URL has never been scraped before, so there is no stale
+cache to bust and no `?v=2` trick needed. The first share should render.
 
 ## Where things stand
 
@@ -390,11 +393,11 @@ audited, and current through 25 August 2026.
 
 The three things most immediately outstanding:
 
-1. **The dashboard has no public home.** It exists as a private artifact and as
-   a built `site-dashboard/` folder. Dragging that folder to Netlify would put it
-   alongside the paper on a URL that needs no login — relevant because Scott is
-   actively sharing this work with baseball people, and artifact links 404 for
-   anyone who is not him.
+1. ~~**The dashboard has no public home.**~~ **Done, 9 September 2026.** Live
+   at https://pitch-shape-explorer.netlify.app/ with the link-preview card
+   serving. Verified end to end on the deployed site: search, arsenal
+   drilldown, CSV export and the grade column all work, and the search input
+   is themed in both light and dark.
 
 2. **The LinkedIn preview card is unconfirmed.** Everything upstream is fixed and
    verified serving, but LinkedIn caches aggressively and may still hold the
