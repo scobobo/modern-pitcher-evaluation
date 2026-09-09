@@ -290,3 +290,101 @@ def fig_social_card(path):
         flat.save(path.with_suffix(".jpg"), "JPEG", quality=95, optimize=True, subsampling=0)
         if im.mode != "RGB":
             flat.save(path, "PNG", optimize=True)
+
+
+def fig_dashboard_card(path, rows=None):
+    """Link-preview card for the interactive explorer.
+
+    Deliberately different from the paper's card. That one sells a finding; this
+    one has to communicate in a glance that the thing behind the link is a tool
+    you can filter, so it leads with the scatter every user meets first: actual
+    whiff rate against what ball flight predicts, with the diagonal where the
+    two agree. Points off the line are the whole product.
+
+    `rows` is the dashboard payload, so the card cannot drift from the data it
+    advertises.
+    """
+    import json
+
+    from config import OUTPUT_DIR as _OUT
+
+    if rows is None:
+        payload = json.loads((_OUT / "dashboard" / "pitcher_seasons.json").read_text(encoding="utf-8"))
+        cols, rows = payload["columns"], payload["rows"]
+        meta = payload["meta"]
+    else:
+        cols, rows, meta = rows
+
+    ix = {c: i for i, c in enumerate(cols)}
+    ff = [r for r in rows if r[ix["pt"]] == "FF"
+          and r[ix["exp"]] is not None and r[ix["whiff"]] is not None
+          and r[ix["n"]] >= 300]
+    exp = np.array([r[ix["exp"]] for r in ff]) * 100
+    act = np.array([r[ix["whiff"]] for r in ff]) * 100
+
+    fig = plt.figure(figsize=(12, 6.3), dpi=100)
+    fig.patch.set_facecolor("#FFFFFF")
+
+    fig.text(0.055, 0.90, "INTERACTIVE  ·  BASEBALL RESEARCH", fontsize=12.5, color=C_SHAPE,
+             fontweight="bold", family="DejaVu Sans", va="top")
+    # 33pt, not 36: at 36 the descender of "out-throwing" reaches the chart's
+    # y-axis labels on a 1200-wide render.
+    fig.text(0.055, 0.815, "Who is out-throwing", fontsize=33, color=INK,
+             fontweight="bold", family="DejaVu Serif", va="top")
+    fig.text(0.055, 0.703, "their shape?", fontsize=33, color=INK,
+             fontweight="bold", family="DejaVu Serif", va="top")
+
+    fig.text(0.055, 0.515,
+             "Every pitcher-season scored against what\n"
+             "his ball flight alone predicts. Filter by year,\n"
+             "age, pitch type, and volume.",
+             fontsize=16, color=INK2, family="DejaVu Sans", linespacing=1.6, va="top")
+
+    seasons = meta.get("seasons", [2015, 2026])
+    fig.text(0.055, 0.135,
+             f"{meta.get('n_rows', len(rows)):,} pitcher-seasons  ·  {seasons[0]}–{seasons[1]}",
+             fontsize=13, color=INK2, family="DejaVu Sans", va="top")
+
+    ax = fig.add_axes([0.560, 0.19, 0.385, 0.62])
+    lo = float(min(exp.min(), act.min())) - 1
+    hi = float(max(exp.max(), act.max())) + 1
+
+    # Two colours need saying out loud. Orange is above the line, which is the
+    # group the headline is asking about; without a legend the split reads as
+    # good-versus-bad, which is the wrong idea entirely.
+    over = act >= exp
+    ax.scatter(exp[~over], act[~over], s=13, color=C_SHAPE, alpha=0.45, lw=0,
+               label="results below shape")
+    ax.scatter(exp[over], act[over], s=13, color=C_SPIN, alpha=0.45, lw=0,
+               label="out-throwing shape")
+    ax.plot([lo, hi], [lo, hi], color=INK2, lw=1.6, ls=(0, (4, 4)))
+    leg = ax.legend(frameon=False, fontsize=10.5, loc="upper left",
+                    markerscale=2.2, handletextpad=0.4, borderpad=0.1, labelspacing=0.3)
+    for text in leg.get_texts():
+        text.set_color(INK2)
+
+    ax.set_xlim(lo, hi)
+    ax.set_ylim(lo, hi)
+    ax.set_xlabel("what the shape predicts", fontsize=12, color=INK2)
+    ax.set_ylabel("what actually happened", fontsize=12, color=INK2)
+    ax.tick_params(labelsize=10, colors=INK2)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    for side in ("bottom", "left"):
+        ax.spines[side].set_color(RULE)
+    ax.grid(color=RULE, lw=0.8)
+    ax.set_axisbelow(True)
+
+    fig.savefig(path, dpi=200, facecolor="#FFFFFF")
+    plt.close(fig)
+
+    # Same flattening as the paper card. Scrapers, LinkedIn especially, are
+    # least tolerant of an alpha channel, and the failure is silent: the file
+    # serves a clean 200 and the link still renders with no card.
+    from PIL import Image
+
+    with Image.open(path) as im:
+        flat = Image.new("RGB", im.size, "#FFFFFF")
+        flat.paste(im, mask=im.split()[-1] if im.mode == "RGBA" else None)
+        flat.save(path.with_suffix(".jpg"), "JPEG", quality=95, optimize=True, subsampling=0)
+    return path.with_suffix(".jpg")

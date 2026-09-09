@@ -70,10 +70,19 @@
     letter-spacing: 0.11em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 0.35rem;
   }
   .f .val { font-family: var(--font-mono); font-size: 0.78rem; color: var(--ink); font-weight: 600; }
-  select, input[type=range] { width: 100%; }
-  select {
+  select, input[type=range], input[type=search] { width: 100%; }
+  select, input[type=search] {
     font-family: var(--font-mono); font-size: 0.8rem; padding: 0.32rem 0.4rem;
     background: var(--panel); color: var(--ink); border: 1px solid var(--rule-strong); border-radius: 3px;
+  }
+  /* Safari paints its own control chrome on search inputs and ignores the
+     background, which left this the one white box on a dark page. */
+  input[type=search] { -webkit-appearance: none; appearance: none; box-sizing: border-box; }
+  input[type=search]::-webkit-search-decoration,
+  input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; }
+  input[type=search]::placeholder { color: var(--ink-3); opacity: 1; }
+  input[type=search]:focus-visible, select:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px;
   }
   input[type=range] { accent-color: var(--shape); margin: 0.25rem 0 0; }
   .chips { display: flex; flex-wrap: wrap; gap: 0.28rem; }

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent
 TEMPLATE = ROOT / "dashboard_template.html"
@@ -48,17 +49,51 @@ def main() -> None:
     # charset a static host will mis-decode the degree signs and en dashes.
     standalone = ROOT / "site-dashboard" / "index.html"
     standalone.parent.mkdir(exist_ok=True)
-    standalone.write_text(
+
+    # Regenerate the link-preview card from the same payload the page embeds,
+    # so the count on the card cannot drift from the count in the page.
+    sys.path.insert(0, str(ROOT / "src"))
+    from config import DASHBOARD_URL
+    from paper_figures import fig_dashboard_card
+
+    card = fig_dashboard_card(standalone.parent / "dashboard-card.png", (parsed["columns"], parsed["rows"], parsed["meta"]))
+    (standalone.parent / "dashboard-card.png").unlink(missing_ok=True)
+
+    title = "Pitch Shape Explorer"
+    desc = (f"Filter {rows:,} MLB pitcher-seasons by year, age, pitch type and volume, "
+            "each scored against what its ball flight alone predicts.")
+    alt = ("Scatter of actual whiff rate against the rate a pitcher's ball flight predicts, "
+           "with the pitchers out-throwing their shape marked.")
+    img = f"{DASHBOARD_URL.rstrip('/')}/{card.name}"
+
+    # `name="image"` alongside `property="og:image"` is what LinkedIn's own
+    # guidance asks for, and its absence was one of three separate causes of a
+    # blank card on the paper. Width and height are declared because scrapers
+    # that cannot fetch the image inline will still reserve the right shape.
+    head = (
         '<!doctype html>\n<html lang="en">\n<head>\n'
         '<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-        "<title>Pitch Shape Explorer</title>\n"
-        '<meta name="description" content="Filter 15,014 MLB pitcher-seasons by year, '
-        'age, pitch type and volume, scored by a validated pitch-shape model.">\n'
-        "</head>\n<body>\n" + html + "\n</body>\n</html>\n",
-        encoding="utf-8",
+        f"<title>{title}</title>\n"
+        f'<meta name="description" content="{desc}">\n'
+        f'<meta property="og:title" content="{title}">\n'
+        f'<meta property="og:description" content="{desc}">\n'
+        '<meta property="og:type" content="website">\n'
+        f'<meta property="og:url" content="{DASHBOARD_URL.rstrip("/")}/">\n'
+        f'<meta name="image" property="og:image" content="{img}">\n'
+        '<meta property="og:image:width" content="2400">\n'
+        '<meta property="og:image:height" content="1260">\n'
+        f'<meta property="og:image:alt" content="{alt}">\n'
+        f'<meta property="og:site_name" content="{title}">\n'
+        '<meta name="twitter:card" content="summary_large_image">\n'
+        f'<meta name="twitter:title" content="{title}">\n'
+        f'<meta name="twitter:description" content="{desc}">\n'
+        f'<meta name="twitter:image" content="{img}">\n'
+        "</head>\n<body>\n"
     )
-    print(f"wrote site-dashboard/index.html (drag that folder to a static host)")
+    standalone.write_text(head + html + "\n</body>\n</html>\n", encoding="utf-8")
+    print(f"wrote site-dashboard/index.html + {card.name} (drag that folder to a static host)")
+    print(f"  card URL is {img} -- set DASHBOARD_URL in src/config.py if that is not the host")
 
     mb = OUTPUT.stat().st_size / 1e6
     print(f"wrote {OUTPUT.name} ({mb:.2f} MB, {rows:,} rows x {cols} columns)")

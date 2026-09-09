@@ -61,3 +61,12 @@ RANDOM_SEED = 17
 
 # Minimum pitches for a pitcher-season to enter pitcher-level aggregations.
 MIN_PITCHES_PER_PITCHER_SEASON = 250
+
+
+# Where the dashboard is hosted. This has to be an absolute URL and it has to
+# be right: og:image is fetched by the scraper, not resolved by the browser, so
+# a relative path or a wrong host produces a link with no preview card at all,
+# and the failure is silent -- the page itself serves a clean 200.
+#
+# Set this to the real host before sharing the link anywhere.
+DASHBOARD_URL = "https://pitch-shape-explorer.netlify.app"
