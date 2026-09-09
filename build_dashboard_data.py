@@ -487,6 +487,22 @@ def main() -> None:
                 row.append(v if isinstance(v, str) else (int(v) if float(v).is_integer() else v))
         rows.append(row)
 
+    # League-average shape per pitch type and season, so the arsenal plot can
+    # show a pitcher's break against what that pitch normally does. Without a
+    # reference the plot says "here are seven dots" and leaves the reader to
+    # supply the league norms from memory.
+    league = {}
+    for (pt, yr), grp in combined.groupby(["pitch_type", "game_year"]):
+        ok = grp.dropna(subset=["ivb_in", "hb_in"])
+        if len(ok) < 20:
+            continue
+        league.setdefault(pt, {})[int(yr)] = {
+            "ivb": round(float(ok["ivb_in"].mean()), 1),
+            "hb": round(float(ok["hb_in"].mean()), 1),
+            "velo": round(float(ok["release_speed"].mean()), 1),
+            "n": int(len(ok)),
+        }
+
     payload = {
         "columns": payload_cols,
         "rows": rows,
@@ -505,6 +521,7 @@ def main() -> None:
             "n_rows": len(rows),
             "validation": validation,
             "persistence": persistence,
+            "league": league,
         },
     }
 

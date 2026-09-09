@@ -128,8 +128,12 @@
     .scrim, .arsenal { animation: none; }
   }
   .arsenal h3 { margin: 0 0 0.2rem; font-size: 1.02rem; }
+  .arsenal .howto { font-size: 0.78rem; line-height: 1.55; color: var(--ink-2);
+    background: var(--panel); border-left: 3px solid var(--rule-strong);
+    padding: 0.55rem 0.7rem; margin: 0.2rem 0 0.8rem; }
+  .arsenal .howto b { color: var(--ink); font-weight: 600; }
   .arsenal .tbl-wrap { overflow-x: auto; }
-  .movplot { width: 100%; max-width: 400px; height: auto; display: block; margin: 0.2rem auto 0.6rem; }
+  .movplot { width: 100%; max-width: 430px; height: auto; display: block; margin: 0.2rem auto 0.6rem; }
   .movplot .mg { stroke: var(--rule); stroke-width: 1; }
   .movplot .mx { stroke: var(--rule-strong); stroke-width: 1.2; }
   .movplot .msep { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.55; }
@@ -137,6 +141,10 @@
   .movplot .mp.ref { fill: var(--spin); fill-opacity: 0.42; stroke: var(--spin); stroke-width: 2; }
   .movplot .ml { font-family: var(--font-mono); font-size: 9px; fill: var(--ink); font-weight: 600; }
   .movplot .ma { font-family: var(--font-mono); font-size: 9px; fill: var(--ink-3); }
+  .movplot .mn { font-family: var(--font-mono); font-size: 8px; fill: var(--ink-3); }
+  .movplot .mt { font-family: var(--font-mono); font-size: 10.5px; fill: var(--ink); font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase; }
+  .movplot .mavg { fill: none; stroke: var(--ink-3); stroke-width: 1.4; stroke-dasharray: 2.5 2.5; }
   table.mini { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
   table.mini th, table.mini td { padding: 0.34rem 0.5rem; text-align: right; white-space: nowrap;
     border-bottom: 1px solid var(--rule); }
@@ -413,7 +421,10 @@
           <tbody id="tbody"></tbody>
         </table>
       </div>
-      <p class="cap">Click a column to sort. Edge is in whiff-rate points: <span class="mono">+0.02</span> means shape argues for two percentage points more than mean reversion alone predicts.</p>
+      <p class="cap"><b>Click any row to open that pitcher's full arsenal</b> &mdash; every pitch he throws,
+      side by side, with a movement chart. Click a column heading to sort. Edge is in whiff-rate points:
+      <span class="mono">+0.02</span> means shape argues for two percentage points more than mean reversion
+      alone predicts.</p>
     </div>
   </div>
 
@@ -1145,78 +1156,106 @@
                .sort(function (a, b) { return g(b, "n") - g(a, "n"); });
   }
 
-  // The arsenal as a movement plot. A table of separation numbers tells you a
-  // slider is 10 mph slower and 24 inches away; this shows you the shape of the
-  // whole repertoire at once, which is how the separation is actually read.
+  // The arsenal as a movement plot: how far each pitch breaks, in inches.
   //
-  // Horizontal break is mirrored for left-handers, so the two hands produce the
-  // same picture. Note the sign: despite the `pfx_x_armside` name upstream, the
-  // positive direction here is GLOVE side. Sinkers and changeups sit negative,
-  // sweepers and curveballs positive, which matches Statcast's raw convention
-  // and the catcher's-view movement plots people are used to. Both ends of the
-  // axis are labelled so nobody has to infer it.
-  function movementPlot(rows, refRow) {
-    var W = 340, H = 290, pad = { l: 40, r: 16, t: 14, b: 32 };
+  // This is NOT a strike zone. It was read as one during review, which is a
+  // fair mistake when a gridded box carries no numbers, so the axes are now
+  // labelled in inches, the plot is titled, and the origin is marked as the
+  // path of a pitch with no movement at all.
+  //
+  // Horizontal break is mirrored for left-handers so both hands read the same.
+  // Note the sign: despite the `pfx_x_armside` name upstream, positive here is
+  // GLOVE side. Sinkers and changeups sit negative, sweepers and curveballs
+  // positive, matching Statcast's raw convention. Both ends are labelled so
+  // nobody has to infer it.
+  function movementPlot(rows, refRow, yr) {
+    var W = 360, H = 346, pad = { l: 46, r: 18, t: 30, b: 66 };
     var w = W - pad.l - pad.r, h = H - pad.t - pad.b;
 
-    var lim = 4;
+    var lg = (META.league || {});
+    var refs = [];
     rows.forEach(function (r) {
-      lim = Math.max(lim, Math.abs(g(r, "ivb")) + 2, Math.abs(g(r, "hb")) + 2);
+      var byYear = lg[g(r, "pt")];
+      var L = byYear && (byYear[yr] || byYear[String(yr)]);
+      if (L) refs.push({ pt: g(r, "pt"), ivb: L.ivb, hb: L.hb });
     });
+
+    var lim = 6;
+    rows.forEach(function (r) { lim = Math.max(lim, Math.abs(g(r, "ivb")) + 3, Math.abs(g(r, "hb")) + 3); });
+    refs.forEach(function (r) { lim = Math.max(lim, Math.abs(r.ivb) + 3, Math.abs(r.hb) + 3); });
     lim = Math.ceil(lim / 5) * 5;
 
     function X(v) { return pad.l + (v + lim) / (2 * lim) * w; }
     function Y(v) { return pad.t + h - (v + lim) / (2 * lim) * h; }
 
-    var parts = ['<svg viewBox="0 0 ' + W + ' ' + H + '" class="movplot" role="img" aria-label="' +
-      'Movement plot: induced vertical break against arm-side horizontal break for each pitch in the arsenal.">'];
+    var out = ['<svg viewBox="0 0 ' + W + ' ' + H + '" class="movplot" role="img" aria-label="' +
+      'Movement plot in inches. Each circle is a pitch type, sized by how often it is thrown, placed by ' +
+      'how far it breaks vertically and horizontally. Hollow rings mark the league average for that pitch.">'];
 
-    for (var t = -lim; t <= lim; t += lim / 2) {
-      if (t === 0) continue;
-      parts.push('<line x1="' + X(t).toFixed(1) + '" y1="' + pad.t + '" x2="' + X(t).toFixed(1) +
-                 '" y2="' + (pad.t + h) + '" class="mg"></line>');
-      parts.push('<line x1="' + pad.l + '" y1="' + Y(t).toFixed(1) + '" x2="' + (pad.l + w) +
-                 '" y2="' + Y(t).toFixed(1) + '" class="mg"></line>');
+    out.push('<text x="' + (W / 2) + '" y="13" class="mt" text-anchor="middle">Movement, inches</text>');
+    out.push('<text x="' + (W / 2) + '" y="24" class="ma" text-anchor="middle">circle size = share of pitches thrown</text>');
+
+    var step = lim / 2;
+    for (var t = -lim; t <= lim + 1e-9; t += step) {
+      var isZero = Math.abs(t) < 1e-9;
+      out.push('<line x1="' + X(t).toFixed(1) + '" y1="' + pad.t + '" x2="' + X(t).toFixed(1) +
+               '" y2="' + (pad.t + h) + '" class="' + (isZero ? "mx" : "mg") + '"></line>');
+      out.push('<line x1="' + pad.l + '" y1="' + Y(t).toFixed(1) + '" x2="' + (pad.l + w) +
+               '" y2="' + Y(t).toFixed(1) + '" class="' + (isZero ? "mx" : "mg") + '"></line>');
+      if (!isZero) {
+        out.push('<text x="' + X(t).toFixed(1) + '" y="' + (pad.t + h + 12) + '" class="mn" text-anchor="middle">' + t + '</text>');
+        out.push('<text x="' + (pad.l - 5) + '" y="' + (Y(t) + 3).toFixed(1) + '" class="mn" text-anchor="end">' + t + '</text>');
+      }
     }
-    parts.push('<line x1="' + X(0).toFixed(1) + '" y1="' + pad.t + '" x2="' + X(0).toFixed(1) +
-               '" y2="' + (pad.t + h) + '" class="mx"></line>');
-    parts.push('<line x1="' + pad.l + '" y1="' + Y(0).toFixed(1) + '" x2="' + (pad.l + w) +
-               '" y2="' + Y(0).toFixed(1) + '" class="mx"></line>');
+    out.push('<text x="' + (X(0) + 3).toFixed(1) + '" y="' + (Y(0) - 4).toFixed(1) + '" class="mn">no break</text>');
 
-    // A guide line from the reference fastball to each secondary: the length of
-    // that line is exactly the separation the model keys on.
+    // League reference first, so a pitcher's own pitch always draws on top.
+    refs.forEach(function (r) {
+      out.push('<circle cx="' + X(r.hb).toFixed(1) + '" cy="' + Y(r.ivb).toFixed(1) +
+               '" r="6" class="mavg"><title>League average ' + r.pt + " in " + yr + ": " +
+               r.ivb.toFixed(1) + ' in ride, ' + Math.abs(r.hb).toFixed(1) + ' in ' +
+               (r.hb < 0 ? "arm-side run" : "glove-side break") + '</title></circle>');
+    });
+
     if (refRow) {
       rows.forEach(function (r) {
         if (r === refRow) return;
-        parts.push('<line x1="' + X(g(refRow, "hb")).toFixed(1) + '" y1="' + Y(g(refRow, "ivb")).toFixed(1) +
-                   '" x2="' + X(g(r, "hb")).toFixed(1) + '" y2="' + Y(g(r, "ivb")).toFixed(1) +
-                   '" class="msep"></line>');
+        out.push('<line x1="' + X(g(refRow, "hb")).toFixed(1) + '" y1="' + Y(g(refRow, "ivb")).toFixed(1) +
+                 '" x2="' + X(g(r, "hb")).toFixed(1) + '" y2="' + Y(g(r, "ivb")).toFixed(1) +
+                 '" class="msep"></line>');
       });
     }
 
     rows.forEach(function (r) {
       var isRef = r === refRow;
       var cx = X(g(r, "hb")), cy = Y(g(r, "ivb"));
-      // Area scales with usage, so the pitch he actually throws reads largest.
-      var rad = Math.max(5, Math.min(13, Math.sqrt(g(r, "n")) / 3.4));
-      // Name the direction rather than showing a signed number: "-16.1 in
-      // arm-side" is a sentence that argues with itself.
+      var rad = Math.max(6, Math.min(14, Math.sqrt(g(r, "n")) / 3.2));
       var hb = g(r, "hb");
       var lateral = Math.abs(hb).toFixed(1) + " in " + (hb < 0 ? "arm-side run" : "glove-side break");
-      parts.push('<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + rad.toFixed(1) +
-                 '" class="mp' + (isRef ? " ref" : "") + '"><title>' + g(r, "pt") + ": " +
-                 fmt(g(r, "ivb"), 1) + ' in ride, ' + lateral + ', ' +
-                 fmt(g(r, "velo"), 1) + ' mph' + (isRef ? " (reference)" : "") + '</title></circle>');
-      parts.push('<text x="' + cx.toFixed(1) + '" y="' + (cy + 3.5).toFixed(1) +
-                 '" class="ml" text-anchor="middle">' + g(r, "pt") + '</text>');
+      out.push('<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + rad.toFixed(1) +
+               '" class="mp' + (isRef ? " ref" : "") + '"><title>' + g(r, "pt") + ": " +
+               fmt(g(r, "ivb"), 1) + ' in ride, ' + lateral + ', ' + fmt(g(r, "velo"), 1) + ' mph' +
+               (isRef ? " (the fastball everything else is measured against)" : "") + '</title></circle>');
+      out.push('<text x="' + cx.toFixed(1) + '" y="' + (cy + 3.5).toFixed(1) +
+               '" class="ml" text-anchor="middle">' + g(r, "pt") + '</text>');
     });
 
-    parts.push('<text x="' + pad.l + '" y="' + (H - 6) + '" class="ma" text-anchor="start">&larr; arm side</text>');
-    parts.push('<text x="' + (pad.l + w) + '" y="' + (H - 6) + '" class="ma" text-anchor="end">glove side &rarr;</text>');
-    parts.push('<text x="10" y="' + (pad.t + h / 2) + '" class="ma" text-anchor="middle" transform="rotate(-90 10 ' +
-               (pad.t + h / 2) + ')">ride &rarr;</text>');
-    parts.push("</svg>");
-    return parts.join("");
+    // Axis name on its own line, direction cues beneath it. Sharing one line
+    // put three labels shoulder to shoulder and the middle one got squeezed.
+    out.push('<text x="' + (pad.l + w / 2) + '" y="' + (H - 44) + '" class="ma" text-anchor="middle">horizontal break</text>');
+    out.push('<text x="' + pad.l + '" y="' + (H - 32) + '" class="ma" text-anchor="start">&larr; arm side</text>');
+    out.push('<text x="' + (pad.l + w) + '" y="' + (H - 32) + '" class="ma" text-anchor="end">glove side &rarr;</text>');
+    out.push('<text x="12" y="' + (pad.t + h / 2) + '" class="ma" text-anchor="middle" transform="rotate(-90 12 ' +
+             (pad.t + h / 2) + ')">ride &rarr;</text>');
+
+    out.push('<g transform="translate(' + pad.l + ',' + (H - 10) + ')">');
+    out.push('<circle cx="5" cy="-4" r="5" class="mp ref"></circle><text x="14" y="0" class="ma">his fastball</text>');
+    out.push('<circle cx="80" cy="-4" r="5" class="mp"></circle><text x="89" y="0" class="ma">his other pitches</text>');
+    out.push('<circle cx="185" cy="-4" r="5" class="mavg"></circle><text x="194" y="0" class="ma">league average</text>');
+    out.push("</g>");
+
+    out.push("</svg>");
+    return out.join("");
   }
 
   function showArsenal(pid, yr) {
@@ -1277,9 +1316,15 @@
 
     document.getElementById("arsenalBody").innerHTML =
       "<h3>" + who + " \u00b7 " + yr + "</h3>" +
-      movementPlot(rows, refRow) +
+      movementPlot(rows, refRow, yr) +
       "<p class='cap'>" + total.toLocaleString() + " tracked pitches across " + rows.length +
       " scored pitch type" + (rows.length === 1 ? "" : "s") + ". " + note + floorNote + "</p>" +
+      "<div class='howto'><b>How to read this.</b> The chart is <b>movement, not location</b>: each circle sits " +
+      "where that pitch ends up relative to a ball thrown with no spin at all, measured in inches. Bigger circles " +
+      "are pitches he throws more. Dashed rings are the league average for that pitch type, so a circle far from " +
+      "its ring is a pitch that behaves unusually. The dotted lines run from his fastball to everything else, and " +
+      "their length is the separation the model judges his secondaries on. Hover any circle for its numbers." +
+      "</div>" +
       "<div class='tbl-wrap'><table class='mini'><thead><tr>" +
       head.map(function (h) { return "<th>" + h + "</th>"; }).join("") +
       "</tr></thead><tbody>" + body + "</tbody></table></div>";

@@ -371,6 +371,20 @@ button would silently do nothing there. On Netlify it works.
 
 Added 9 September 2026.
 
+**Nothing told anyone the rows were clickable.** The caption above the table now
+opens with "Click any row to open that pitcher's full arsenal", and the drawer
+itself carries a short "how to read this" block, because a movement chart is
+not self-explanatory.
+
+**The movement chart was read as a strike zone during review.** That is a fair
+mistake to make of a gridded box with unlabelled axes, and it is the kind of
+misreading that makes a tool untrustworthy rather than merely unclear. Fixed by
+saying what it is: a "Movement, inches" title, numeric tick labels on both axes,
+the origin marked "no break", direction cues on their own line, and a legend.
+It also carries more now: **dashed rings mark the league average for each pitch
+type in that season**, so a circle far from its ring is a pitch that behaves
+unusually, and circle area tracks how often the pitch is thrown.
+
 **The arsenal is a flyout drawer now**, not an inline card, so the table stays
 in view while you read a pitcher. Scrim to click away, Escape to close, focus
 returned to the row that opened it. The substance that was already there
