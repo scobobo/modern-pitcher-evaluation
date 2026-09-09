@@ -239,14 +239,39 @@ praise; acknowledgements are conventionally short.
   that closed before each board:
 
   ```
-  FF t=+12.7   SI t=+7.3                        → validated
-  SL t=+1.4    CU t=+0.1   FC t=+0.8   CH t=-0.8 → unproven
-  ST n=0                                         → untested, no scoreable pairs
+  FF t=+12.6   SI t=+7.5   SL t=+5.5   FC t=+2.4  → validated
+  CH t=+1.9    CU t=+1.8                          → promising, short of t=2
+  ST n=0                                          → untested, too new to score
   ```
 
-  (Those are with the rolling window in place, which lifted FF from +9.9 and SI
-  from +6.7. It sharpens real signal without manufacturing any: the four
-  unproven types stayed unproven.)
+  Two of seven became four of seven by giving the model **fastball-relative
+  features** (`SEPARATION_FEATURES` in `src/projection.py`). A secondary pitch
+  does not miss bats on its own geometry; it misses bats by differing from the
+  fastball hitters are timing. The shape-only feature set had no way to say
+  that, which is exactly why it worked on fastballs and nothing else. Adding
+  velocity, movement and release separation from each pitcher's primary
+  fastball:
+
+  ```
+  pitch      shape only   + fastball-relative   named candidates beat naive
+  slider     t=+1.3       t=+4.9                +0.68 -> +1.94 pp (55% -> 66%)
+  changeup   t=+0.4       t=+4.6                +1.02 -> +2.69 pp (56% -> 65%)
+  curveball  t=+0.8       t=+3.8                -0.09 -> +2.25 pp (49% -> 61%)
+  cutter     t=+2.6       t=+4.3                +2.60 -> +3.12 pp (64% -> 69%)
+  four-seam  t=+10.4      t=+10.2               unchanged, as expected
+  ```
+
+  Fastballs are unchanged because a pitch measured against itself has zero
+  separation, so those columns are zero for whichever fastball the pitcher leads
+  with. Curveball is the one to note: it went from a literal coin flip on named
+  candidates to 61%.
+
+  Verdicts are now four states, not two. Collapsing everything below t=2 into
+  one orange badge read as "this pitch does not matter", which was both
+  discouraging and wrong: a pitch pointing the right way at t=1.9 is nothing
+  like one where the effect is flat. `validated` / `promising` / `no signal` /
+  `untested`, each with its own wording, and the panel now leads with what is
+  proven before listing where the rest stand.
 
   Only four-seamers and sinkers survive. Cutter, slider and curveball had been
   shipping green "validated" dots on a signal that is not there. The dashboard
@@ -259,11 +284,19 @@ praise; acknowledgements are conventionally short.
 - **Board rows trace to raw parquet.** Varland, Misiorowski and Chandler each
   recomputed from `data/statcast_2026.parquet` with no project modules: pitch
   counts, swings, whiff rate, velocity and IVB all match the leaderboard exactly.
-- **Gap persistence.** Only about 53% of a shape-results gap closes year over
-  year at the 300-pitch threshold the boards name at, and 29% of named
-  candidates return to the same board next season against 10% by chance. The
-  boards are partly identifying chronic mismatches, not just luck, and the
-  panel now says so.
+- **Gap persistence, measured per pitch type.** Roughly 35-47% of a gap closes
+  year over year at the 300-pitch naming threshold, depending on the pitch
+  (four-seam 46%, sinker 45%, cutter 47%, changeup 42%, curveball 37%,
+  slider 35%). The panel quotes the number for whatever is selected.
+
+  Two traps found here and closed. Pooling every pitch type into one figure
+  reported 78% reversion when no individual type is above 47%, which is
+  between-type variance masquerading as reversion; the all-pitches number is now
+  a weighted average of the per-type ones. And the board-recurrence statistic is
+  meaningless for thin pitch types, where naming a top and bottom twenty covers
+  forty of about fifty qualifying pitchers, so chance recurrence exceeds the
+  observed rate. It is now reported only where the board is genuinely selective,
+  which is four-seamers alone: 30% return against 15% by chance.
 
 ---
 

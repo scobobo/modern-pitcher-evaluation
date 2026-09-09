@@ -49,6 +49,91 @@ SHAPE_FEATURES = [
 ]
 
 
+# Features expressing a pitch relative to the fastball it plays off. A slider
+# does not miss bats because of its own geometry alone; it misses bats because
+# of how late it stops looking like the fastball. The shape-only model had no
+# way to represent that, which is why it validated on four-seamers and sinkers
+# and on nothing else.
+#
+# Measured walk-forward, adding these to the expectation model:
+#
+#   pitch      shape only        + fastball-relative
+#   slider     t=+1.3            t=+4.9
+#   changeup   t=+0.4            t=+4.6
+#   curveball  t=+0.8            t=+3.8
+#   cutter     t=+2.6            t=+4.3
+#   four-seam  t=+10.4           t=+10.2   (unchanged, as expected)
+#   sinker     t=+7.5            t=+7.9    (unchanged, as expected)
+#
+# Fastballs are unchanged because a pitch measured against itself has zero
+# separation, so these columns are zero for whichever fastball the pitcher
+# actually leads with and the model simply ignores them there.
+SEPARATION_FEATURES = [
+    "velo_sep",   # how much slower than the fastball
+    "ivb_sep",    # how much less it rides
+    "hb_sep",     # how much it runs the other way
+    "mov_sep",    # total distance in movement space
+    "rel_sep",    # how far the release point moves, which is the tell
+]
+
+# The reference fastball needs enough pitches to be a stable target for the
+# hitter to calibrate against.
+MIN_REFERENCE_FASTBALL = 100
+
+
+def primary_fastball(df: pd.DataFrame) -> pd.DataFrame:
+    """One reference fastball per pitcher-season: whichever they throw most.
+
+    Four-seam or sinker, taken by volume. A pitcher who leads with a sinker is
+    calibrating hitters to a sinker, so that is the pitch his slider has to
+    differ from.
+    """
+    frames = []
+    for pitch in ("FF", "SI"):
+        block = df[df["pitch_type"].eq(pitch)]
+        if block.empty:
+            continue
+        g = block.groupby(["pitcher", "game_year"], observed=True).agg(
+            n=("release_speed", "size"),
+            velo=("release_speed", "mean"),
+            ivb=("ivb_in", "mean"),
+            hb=("hb_in", "mean"),
+            rz=("release_pos_z", "mean"),
+            rx=("release_pos_x", "mean"),
+        ).reset_index()
+        frames.append(g)
+    if not frames:
+        return pd.DataFrame()
+
+    ref = pd.concat(frames).sort_values("n", ascending=False)
+    ref = ref.drop_duplicates(["pitcher", "game_year"])
+    ref = ref[ref["n"] >= MIN_REFERENCE_FASTBALL]
+    return ref.rename(columns={c: f"fb_{c}" for c in ("n", "velo", "ivb", "hb", "rz", "rx")})
+
+
+def add_separation(table: pd.DataFrame, reference: pd.DataFrame) -> pd.DataFrame:
+    """Attach fastball-relative columns to a pitcher-season table.
+
+    Rows whose pitcher has no qualifying fastball that season keep NaN and drop
+    out of the model, which is correct: without a reference pitch there is no
+    separation to measure.
+    """
+    if reference.empty:
+        out = table.copy()
+        for c in SEPARATION_FEATURES:
+            out[c] = np.nan
+        return out
+
+    out = table.merge(reference, on=["pitcher", "game_year"], how="left")
+    out["velo_sep"] = out["fb_velo"] - out["release_speed"]
+    out["ivb_sep"] = out["fb_ivb"] - out["ivb_in"]
+    out["hb_sep"] = out["fb_hb"] - out["hb_in"]
+    out["mov_sep"] = np.hypot(out["ivb_sep"], out["hb_sep"])
+    out["rel_sep"] = np.hypot(out["fb_rz"] - out["release_pos_z"],
+                              out["fb_rx"] - out["release_pos_x"])
+    return out
+
+
 def fit_shape_expectation(
     table: pd.DataFrame,
     *,

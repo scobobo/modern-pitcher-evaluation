@@ -87,6 +87,8 @@
      the caveat travels with the control rather than living in a footnote. */
   .chip .v { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 0.32rem; vertical-align: middle; }
   .chip .v.validated { background: var(--good); }
+  .chip .v.promising { background: transparent; box-shadow: inset 0 0 0 2px var(--good); }
+  .chip .v[class*="no signal"], .chip .v.nosignal { background: var(--spin); }
   .chip .v.unproven { background: var(--spin); }
   .chip .v.inverted { background: var(--bad); }
   .chip .v.untested { background: var(--neutral); }
@@ -232,13 +234,13 @@
 
 <div class="wrap">
   <header>
-    <p class="eyebrow">Pitch Shape Explorer · 7,483,321 tracked pitches</p>
+    <p class="eyebrow" id="eyebrow">Pitch Shape Explorer</p>
     <h1>Who is out-throwing their shape?</h1>
     <p class="sub">Filter the pitcher-season population by year, age, pitch type, handedness, and volume. Every row is scored by the same validated model.</p>
   </header>
 
   <div class="note">
-    <strong>The model is fixed, not refit.</strong> It was trained once on the 2015–2025 seasons and applied to every row, so filtering changes which pitchers you see, never what the model learned.
+    <strong>The model is fixed, not refit.</strong> <span id="modelnote"></span> Filtering changes which pitchers you see, never what the model learned.
   </div>
 
   <div class="filters" id="filters">
@@ -380,6 +382,34 @@
   };
 
   // ---------- filter controls ----------
+    // Four states, each said plainly. Lumping everything that misses the
+  // significance bar under one label reads as "this pitch does not matter",
+  // which is wrong: a pitch pointing the right way at t = 1.9 is in a very
+  // different position from one where the effect is flat.
+  // Header facts come from the payload. Both of these were hardcoded once and
+  // both went stale, one by 600,000 pitches.
+  (function stampHeader() {
+    var eb = document.getElementById("eyebrow");
+    if (eb && META.tracked_pitches)
+      eb.textContent = "Pitch Shape Explorer \u00b7 " + META.tracked_pitches.toLocaleString() + " tracked pitches";
+    var mn = document.getElementById("modelnote");
+    if (mn && META.train_seasons)
+      mn.textContent = "It was trained once on the " + META.train_seasons[0] + "\u2013" + META.train_seasons[1] +
+        " seasons, the most recent " + META.train_window + " complete years, and applied to every row.";
+  })();
+
+  function verdictTitle(pitch, vd) {
+    if (vd.verdict === "validated")
+      return "Edge validated for " + pitch + ": it beat mean reversion out of sample (t = " + vd.t + ", " + vd.n + " season pairs)";
+    if (vd.verdict === "promising")
+      return "Edge points the right way for " + pitch + " but has not cleared the bar (t = " + vd.t + ", needs 2.0; " + vd.n + " season pairs)";
+    if (vd.verdict === "inverted")
+      return "Edge points the WRONG WAY for " + pitch + " historically (t = " + vd.t + ")";
+    if (vd.verdict === "untested")
+      return "Not enough season pairs to test " + pitch + " yet";
+    return "No edge found for " + pitch + ": tested and the effect is flat (t = " + vd.t + ", " + vd.n + " season pairs)";
+  }
+
   function buildChips(hostId, values, key) {
     var host = document.getElementById(hostId);
     host.innerHTML = "";
@@ -387,14 +417,8 @@
       var b = document.createElement("button");
       b.type = "button"; b.className = "chip";
       var vd = (key === "pt" && META.validation && META.validation[v]) ? META.validation[v] : null;
-      b.innerHTML = v + (vd ? "<span class='v " + vd.verdict + "'></span>" : "");
-      if (vd) {
-        b.title = vd.verdict === "validated"
-          ? "Edge validated for " + v + " (t = " + vd.t + ", n = " + vd.n + " season pairs)"
-          : vd.verdict === "inverted"
-            ? "Edge points the WRONG WAY for " + v + " historically (t = " + vd.t + ")"
-            : "Edge not proven for " + v + " (t = " + vd.t + ")";
-      }
+      b.innerHTML = v + (vd ? "<span class='v " + vd.verdict.replace(/\s+/g, "") + "'></span>" : "");
+      if (vd) b.title = verdictTitle(v, vd);
       b.setAttribute("aria-pressed", state[key].indexOf(v) > -1 ? "true" : "false");
       b.addEventListener("click", function () {
         var i = state[key].indexOf(v);
@@ -683,28 +707,61 @@
     if (state.yrFrom <= 2019 && state.yrTo >= 2020) {
       warns.push("<b>Spin measurement changed in 2020</b> when tracking moved from TrackMan to Hawk-Eye, so values either side of that line are not perfectly comparable.");
     }
-    var weak = state.pt.filter(function (v) {
-      var vd = META.validation && META.validation[v];
-      return vd && vd.verdict !== "validated";
+    // Separate the states rather than lumping them. "Points the right way but
+    // unconfirmed" and "tested and flat" call for different behaviour from the
+    // reader, and running them together makes the tool look broken.
+    function inState(names) {
+      return state.pt.filter(function (v) {
+        var vd = META.validation && META.validation[v];
+        return vd && names.indexOf(vd.verdict) > -1;
+      });
+    }
+    var promising = inState(["promising"]);
+    var flat = inState(["no signal", "unproven"]);
+    var wrongway = inState(["inverted"]);
+    var untested = inState(["untested"]);
+
+    if (promising.length) {
+      var pl = promising.map(function (v) { return v + " (t = " + META.validation[v].t + ")"; });
+      warns.unshift("<b>" + pl.join(" and ") + " " + (promising.length > 1 ? "point" : "points") +
+        " the right way but " + (promising.length > 1 ? "have" : "has") + " not cleared the bar.</b> " +
+        "The edge is positive out of sample and needs t = 2.0 to be called proven. Treat these names as " +
+        "worth a look rather than a finding.");
+    }
+    if (flat.length) {
+      var fl = flat.map(function (v) { return v + " (t = " + META.validation[v].t + ")"; });
+      warns.unshift("<b>No edge was found for " + fl.join(" and ") + ".</b> " +
+        (flat.length > 1 ? "These were" : "This was") + " tested against enough season pairs to have caught " +
+        "an effect the size of the four-seam one, and the result is flat. Candidates here are descriptive only.");
+    }
+    if (wrongway.length) {
+      var wl = wrongway.map(function (v) { return v + " (t = " + META.validation[v].t + ")"; });
+      warns.unshift("<b>The edge points the wrong way for " + wl.join(" and ") + ".</b> " +
+        "Historically these candidates moved opposite to the call. Do not act on them.");
+    }
+    if (untested.length) {
+      warns.unshift("<b>" + untested.join(" and ") + " " + (untested.length > 1 ? "have" : "has") +
+        " not been tested.</b> There are not yet enough back-to-back seasons to score the edge on " +
+        (untested.length > 1 ? "these pitches" : "this pitch") + ".");
+    }
+    var holds = Object.keys(META.validation || {}).filter(function (v) {
+      return META.validation[v].verdict === "validated";
     });
-    if (weak.length) {
-      var lines = weak.map(function (v) {
-        var vd = META.validation[v];
-        return v + " (" + (vd.verdict === "inverted"
-          ? "historically points the wrong way, t = " + vd.t
-          : "not proven, t = " + vd.t) + ")";
-      });
-      var holds = Object.keys(META.validation || {}).filter(function (v) {
-        return META.validation[v].verdict === "validated";
-      });
-      warns.unshift("<b>The edge does not validate for " + lines.join(" and ") +
-        ".</b> Candidates shown for " + (weak.length > 1 ? "those pitches" : "that pitch") +
-        " are descriptive only." + (holds.length
-          ? " It holds up on " + holds.join(" and ") + "."
-          : ""));
+    if ((promising.length || flat.length || wrongway.length || untested.length) && holds.length) {
+      warns.unshift("<b>The edge is proven on " + holds.join(", ") + ".</b> " +
+        "Those boards beat mean reversion out of sample; the notes below say where the others stand.");
     }
 
-    var P = META.persistence;
+    // Use the selected pitch's own number when exactly one pitch is in view,
+    // otherwise the pooled one. Quoting the four-seam figure while the reader
+    // is looking at curveballs would be worse than saying nothing.
+    var P = null;
+    if (META.persistence) {
+      P = (state.pt.length === 1 && META.persistence[state.pt[0]] &&
+           META.persistence[state.pt[0]].reversal_pct != null)
+        ? META.persistence[state.pt[0]]
+        : META.persistence._all;
+    }
     if (P && P.reversal_pct != null) {
       var stays = 100 - P.reversal_pct;
       warns.push("<b>About " + stays + "% of a gap this size never closes.</b> Year to year these gaps " +

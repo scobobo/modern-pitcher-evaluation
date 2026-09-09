@@ -28,7 +28,12 @@ from evaluation import adjust_vaa_for_height, pitcher_season_table
 from fetch import load_seasons
 from leaderboard import _pairs, _shape_model
 from players import attach_age, fetch_bios
-from projection import SHAPE_FEATURES
+from projection import (
+    SEPARATION_FEATURES,
+    SHAPE_FEATURES,
+    add_separation,
+    primary_fastball,
+)
 from sklearn.linear_model import Ridge
 from sklearn.model_selection import GroupKFold
 from sklearn.pipeline import make_pipeline
@@ -95,6 +100,26 @@ ROUND = {"age": 0, "velo": 1, "ivb": 1, "hb": 1, "vaa": 2, "ext": 1,
          "whiff": 4, "rv": 5, "exp": 4, "edge": 5}
 
 
+def _verdict(t: float) -> str:
+    """Four states, not two.
+
+    Collapsing everything that fails the significance bar into one bucket reads
+    as "this pitch does not matter", which is both discouraging and wrong. A
+    slider whose edge points the right way at t = 1.9 is in a completely
+    different position from a pitch where the effect is flat or backwards, and
+    the reader deserves to be told which one they are looking at.
+
+    The bar for "validated" stays t > 2, the same standard the paper uses.
+    """
+    if t > 2:
+        return "validated"
+    if t > 1:
+        return "promising"
+    if t < -1.5:
+        return "inverted"
+    return "no signal"
+
+
 def _persistence(block: pd.DataFrame, target: str) -> dict:
     """How much of a shape-results gap is temporary, and how much is the pitcher?
 
@@ -142,14 +167,22 @@ def _persistence(block: pd.DataFrame, target: str) -> dict:
             repeats += len(names & board_next)
 
     if not total or not pool_sizes:
-        return {"n": int(len(m)), "reversal_pct": round(reversal * 100), "recurrence_pct": None, "chance_pct": None}
+        return {"n": int(len(m)), "reversal_pct": round(reversal * 100),
+                "recurrence_pct": None, "chance_pct": None}
 
-    chance = 40.0 / (sum(pool_sizes) / len(pool_sizes))
+    # Recurrence only means something when the board is actually selective. For
+    # a thin pitch type the two boards name forty pitchers out of a qualifying
+    # pool of fifty, so "they came back" is arithmetic rather than signal, and
+    # the chance rate can exceed the observed rate. Report nothing rather than
+    # something that reads as a finding.
+    chance = min(1.0, 40.0 / (sum(pool_sizes) / len(pool_sizes)))
+    observed = repeats / total
+    selective = chance <= 0.5 * observed
     return {
         "n": int(len(m)),
         "reversal_pct": round(reversal * 100),
-        "recurrence_pct": round(100 * repeats / total),
-        "chance_pct": round(100 * min(1.0, chance)),
+        "recurrence_pct": round(100 * observed) if selective else None,
+        "chance_pct": round(100 * chance) if selective else None,
     }
 
 
@@ -204,16 +237,23 @@ def _walk_forward_verdict(block: pd.DataFrame, target: str) -> dict:
     resid = m["next_actual"] - m["wf_naive"]
     r = float(np.corrcoef(m["wf_edge"], resid)[0, 1])
     t = r * np.sqrt((len(m) - 2) / max(1e-12, 1 - r**2))
-    verdict = "validated" if t > 2 else ("inverted" if t < -1.5 else "unproven")
-    return {"n": int(len(m)), "r": round(r, 3), "t": round(float(t), 1), "verdict": verdict}
+    return {"n": int(len(m)), "r": round(r, 3), "t": round(float(t), 1),
+            "verdict": _verdict(float(t))}
 
 
-def oof_shape_expectation(block: pd.DataFrame, target: str) -> pd.Series:
-    """Shape-only expectation, out-of-fold and grouped by pitcher."""
-    frame = block[SHAPE_FEATURES + [target, "pitcher"]].dropna()
+def oof_shape_expectation(block: pd.DataFrame, target: str,
+                          features: list[str] | None = None) -> pd.Series:
+    """Shape expectation, out-of-fold and grouped by pitcher.
+
+    `features` carries the separation columns for secondary pitches. They are
+    zero for whichever fastball the pitcher leads with, so the same feature list
+    can be used for every pitch type without special-casing fastballs.
+    """
+    features = features or SHAPE_FEATURES
+    frame = block[features + [target, "pitcher"]].dropna()
     if len(frame) < 60:
         return pd.Series(np.nan, index=block.index)
-    x = frame[SHAPE_FEATURES].to_numpy(float)
+    x = frame[features].to_numpy(float)
     y = frame[target].to_numpy(float)
     g = frame["pitcher"].to_numpy()
     oof = np.full(len(frame), np.nan)
@@ -235,6 +275,12 @@ def main() -> None:
     bios = fetch_bios(data["pitcher"].dropna().unique())
     log.info("biographical rows: %d", len(bios))
 
+    # One reference fastball per pitcher-season, so every secondary pitch can be
+    # measured against the pitch hitters are timing.
+    recent_seasons = [y for y in COMPLETE_SEASONS if y > max(COMPLETE_SEASONS) - TRAIN_WINDOW]
+    reference = primary_fastball(data)
+    log.info("reference fastballs: %s pitcher-seasons", f"{len(reference):,}")
+
     frames = []
     for pt in PITCH_TYPES:
         block = data[data["pitch_type"].eq(pt)]
@@ -253,11 +299,18 @@ def main() -> None:
         if table.empty:
             continue
 
+        rel_x = (block.groupby(["pitcher", "game_year"], observed=True)["release_pos_x"]
+                 .mean().rename("release_pos_x").reset_index())
+        table = table.merge(rel_x, on=["pitcher", "game_year"], how="left")
+        table = add_separation(table, reference)
+        model_features = SHAPE_FEATURES + SEPARATION_FEATURES
+
         # Shape expectation, out-of-fold within each season so a pitcher never
         # informs his own benchmark.
         table["shape_exp"] = np.nan
         for yr, idx in table.groupby("game_year").groups.items():
-            table.loc[idx, "shape_exp"] = oof_shape_expectation(table.loc[idx], TARGET)
+            table.loc[idx, "shape_exp"] = oof_shape_expectation(
+                table.loc[idx], TARGET, model_features)
 
         # A ridge extrapolates linearly, so a pitcher whose shape sits far
         # outside the normal range gets an expectation no pitcher has ever
@@ -322,17 +375,31 @@ def main() -> None:
         log.info("%s edge validation (walk-forward): r=%s t=%s (%s, n=%d)",
                  pt, v["r"], v["t"], v["verdict"], v["n"])
 
-    # How much of a gap actually corrects, measured on the pitch types where
-    # the edge validates. Shipped so the panel can say it rather than imply a
-    # correction that mostly does not arrive.
-    validated_types = [pt for pt, v in validation.items() if v["verdict"] == "validated"]
-    persistence = _persistence(
-        combined[combined["pitch_type"].isin(validated_types)] if validated_types else combined,
-        TARGET,
-    )
-    log.info("gap persistence: %s%% reverses; boards repeat %s%% vs %s%% by chance (n=%d)",
-             persistence["reversal_pct"], persistence["recurrence_pct"],
-             persistence["chance_pct"], persistence["n"])
+    # How much of a gap actually corrects. Measured per pitch type, because the
+    # answer differs a lot between them -- a four-seam gap is about half
+    # permanent, a breaking-ball gap much less so -- and the panel quotes this
+    # number next to whichever pitch the reader has selected.
+    persistence = {}
+    for pt, g in combined.groupby("pitch_type"):
+        persistence[pt] = _persistence(g, TARGET)
+
+    # The all-pitches figure is the weighted average of the per-type ones, not a
+    # pooled fit. Pooling types with different whiff baselines manufactures
+    # reversion that is really just between-type variance: it reported 78% where
+    # every individual pitch type sits between 35% and 47%.
+    parts = [(v["n"], v["reversal_pct"]) for v in persistence.values() if v["reversal_pct"] is not None]
+    if parts:
+        weight = sum(n for n, _ in parts)
+        persistence["_all"] = {
+            "n": weight,
+            "reversal_pct": round(sum(n * r for n, r in parts) / weight),
+            "recurrence_pct": None,
+            "chance_pct": None,
+        }
+    for pt, v in sorted(persistence.items()):
+        if v["reversal_pct"] is not None:
+            log.info("%s gap persistence: %s%% reverses; repeats %s%% vs %s%% by chance (n=%d)",
+                     pt, v["reversal_pct"], v["recurrence_pct"], v["chance_pct"], v["n"])
 
     # Prefer the StatsAPI name: Statcast's "Last, First" reads badly in a table.
     combined["player_name"] = combined["full_name"].fillna(combined["player_name"])
@@ -363,6 +430,8 @@ def main() -> None:
             "min_swings": MIN_SWINGS,
             "target": TARGET,
             "train_window": TRAIN_WINDOW,
+            "train_seasons": [int(min(recent_seasons)), int(max(recent_seasons))],
+            "tracked_pitches": int(len(data)),
             "n_rows": len(rows),
             "validation": validation,
             "persistence": persistence,
