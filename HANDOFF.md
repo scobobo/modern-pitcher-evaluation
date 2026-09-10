@@ -367,6 +367,50 @@ One thing to know if the dashboard is ever published as an Artifact rather than
 hosted: the Artifact viewer sandbox blocks page-initiated downloads, so the CSV
 button would silently do nothing there. On Netlify it works.
 
+## Does the paper need updating? Tested, and no.
+
+Settled 9 September 2026. The one finding with any claim on the paper was spin
+efficiency, so it was run through the paper's own pitch-level ladder, with
+efficiency added **last** so every incumbent block keeps first claim on shared
+variance. 1,249,353 four-seams, 2020-2025, the whole window efficiency exists
+for.
+
+```
+                         run value                 whiffs
+controls                  0.04025                 0.06265
++velocity     +0.00025 (t= +3.8)      +0.00424 (t= +9.7)
++spin         +0.00007 (t= +1.0)      +0.00085 (t= +4.0)
++shape        +0.00170 (t= +7.9)      +0.01337 (t=+24.9)
++efficiency   -0.00005 (t= -0.3)      +0.00030 (t= +1.4)
+```
+
+**Efficiency clears nothing at pitch level.** t = -0.3 on run value, +1.4 on
+whiffs, against the project's standing bar of 2.
+
+The reason is worth keeping, because it is not a null so much as a redundancy.
+Spin efficiency matters by determining how much the ball moves -- and the
+ladder already *observes* how much each pitch moved, per pitch. Once movement
+is in the model, knowing how efficiently the ball was spun to produce it adds
+nothing. At pitcher-season grain the features are season averages, efficiency
+carries information those averages do not, and it earns its place; that is why
+it helps the dashboard (slider t=+5.9) and not the paper.
+
+The run also reproduces the paper's structure on this shorter window: shape
+beats velocity by 6.8x on run value and 3.2x on whiffs, against the published
+4.5x and 3.4x over 2015-2025. Different window, same finding, which is a useful
+check that nothing has drifted.
+
+**Determination: do not update the paper.** Nothing published is wrong; the
+paper's pipeline (`features`, `config`, `fetch`, `model`, `plots`, `temporal`,
+`evaluation`) is untouched by this session apart from a 2026 season window the
+paper's own `DEFAULT_SEASONS` excludes. Every other finding this session is
+dashboard-scoped.
+
+One correction to something asserted earlier in that discussion: the reading
+that section 5.1 understates spin was **wrong**. At pitch level, in the paper's
+own framework, spin-derived information beyond movement adds nothing, and
+section 5.1 stands as written.
+
 ## Spin efficiency added to the model, 9 September 2026
 
 Prompted by an outside critique arguing the work should test seam-shifted wake
