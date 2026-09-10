@@ -367,7 +367,7 @@
       <dt>Edge</dt>
       <dd>What the shape argues for beyond simple regression to the mean. Positive means the stuff is better than the results; negative means the results are running ahead of the stuff.</dd>
       <dt>Why filtering<br>does not refit</dt>
-      <dd>The shape expectation is fit out-of-fold and grouped by pitcher, so no pitcher's expectation comes from a model that has seen him. The edge is trained on the <b>four most recent complete seasons</b> rather than all eleven, because the game drifts: league fastball velocity is up nearly two miles an hour since 2015, and including seasons that old made recent predictions measurably worse. Both are fit once, here, and then applied to every row. If the model refit itself on whatever you filtered to, a narrow selection would quietly report a model trained on a handful of rows with no validation behind it.</dd>
+      <dd>The shape expectation is fit out-of-fold and grouped by pitcher, so no pitcher's expectation comes from a model that has seen him. From <b>2020</b> it also uses <b>spin efficiency</b> &mdash; what fraction of a pitch's spin is tilted to actually move the ball, rather than pointing down the flight path and doing nothing. That is a different measurement from spin rate, which the underlying paper found adds nothing once velocity is accounted for. Efficiency does add something: it improves the expectation on sliders (<span class="mono">t = +5.9</span>), cutters (<span class="mono">+3.8</span>) and four-seamers (<span class="mono">+2.6</span>), and nothing measurable elsewhere. It comes from Hawk-Eye and does not exist before 2020, so earlier seasons use ball flight alone; each season is fit separately, so nothing pools across that boundary. The edge is trained on the <b>four most recent complete seasons</b> rather than all eleven, because the game drifts: league fastball velocity is up nearly two miles an hour since 2015, and including seasons that old made recent predictions measurably worse. Both are fit once, here, and then applied to every row. If the model refit itself on whatever you filtered to, a narrow selection would quietly report a model trained on a handful of rows with no validation behind it.</dd>
     </dl>
   </details>
 
@@ -942,6 +942,13 @@
       items.push("<b>At this pitch count, lead with the results.</b> Past performance is the better single predictor above roughly 500 pitches. Use the edge column as a tiebreaker between similar arms, not as the primary read.");
     } else {
       items.push("<b>At this pitch count, use both.</b> Results have overtaken shape but have not run away with it, and the two together beat either alone. Where they disagree, that disagreement is the signal.");
+    }
+
+    if (META.enriched_pct && state.yrTo >= (META.spin_efficiency_from || 2020)) {
+      items.push("<b>Spin efficiency is in the model from " + (META.spin_efficiency_from || 2020) + ".</b> " +
+        "How much of a pitch's spin actually moves the ball, which is not the same as how fast it spins. " +
+        "It sharpens the expectation on sliders, cutters and four-seamers; Hawk-Eye does not provide it before " +
+        (META.spin_efficiency_from || 2020) + ", so older seasons are judged on ball flight alone.");
     }
 
     if (META.train_window) {

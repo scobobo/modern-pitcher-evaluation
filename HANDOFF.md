@@ -367,6 +367,58 @@ One thing to know if the dashboard is ever published as an Artifact rather than
 hosted: the Artifact viewer sandbox blocks page-initiated downloads, so the CSV
 button would silently do nothing there. On Netlify it works.
 
+## Spin efficiency added to the model, 9 September 2026
+
+Prompted by an outside critique arguing the work should test seam-shifted wake
+(non-Magnus movement). The critique reaches the right destination by the wrong
+road, and the distinction matters.
+
+**What does not work.** Statcast's per-pitch `spin_axis` is inferred from
+observed movement rather than measured off the ball -- movement direction
+reproduces from it at a circular concentration of 0.91 under a clean mapping --
+so a deviation built from it is close to circular by construction. What residual
+survives sorts by pitch type as four-seam 12 deg, sinker 23, cutter 42, sweeper
+58, slider 70, which is the gyro-spin ordering, not a seam signature. Tested
+directly as a feature, a non-Magnus residual clears t=2 on **nothing**, the best
+being four-seamers at t=+1.6. It is deliberately not in the model.
+
+**What does work.** Savant's active-spin leaderboard is fetchable per pitcher,
+pitch type and season (`src/spin_efficiency.py`, cached). Active spin is a
+different measurement from spin rate: rate is how fast the ball turns,
+efficiency is what fraction of that spin is tilted to move it. The paper's
+finding that residual spin *rate* adds nothing still stands untouched.
+
+Added to the shipped feature set, on paired CV folds over identical rows:
+
+```
+pitch       base R2   + active spin   gain        t
+slider       0.1794      0.2060      +0.0265    +5.9
+cutter       0.2306      0.2578      +0.0273    +3.8
+four-seam    0.2187      0.2344      +0.0157    +2.6
+sinker, sweeper, curveball, changeup           |t| <= 0.8
+```
+
+The three that gain are the three where gyro spin varies most, which is the
+mechanism you would predict.
+
+**It improves the expectation and barely moves the forecast.** Edge validation
+went FF 12.6 -> 12.9, SI 7.5 -> 7.5, SL 5.5 -> 5.3, FC 2.4 -> 2.3. So the
+"Shape exp" column is measurably more accurate, and the progression/regression
+calls are not. Worth having, worth not overselling.
+
+**Coverage constraint.** Hawk-Eye, so 2020 onward, nothing for 2015-2019, and
+57% of rows overall. Survivable only because the expectation is already fit
+within each season separately: a season can carry a feature its predecessors
+lack without pooling across the boundary. Every row still gets a shape-only
+expectation; rows with efficiency get a second, better one that overwrites it,
+so nothing loses its expectation.
+
+Revalidated after the change: backtest unchanged at 1,413 pitcher-seasons,
++0.0241 lift, 8 of 8 seasons, corr +0.239 (t=+9.2), decile spread +0.0367.
+Board rows re-traced to raw parquet -- Sasaki's slider and Varland's four-seam
+match exactly, and Soriano's 13-pitch discrepancy resolved to the project
+requiring a non-null spin rate where the trace did not.
+
 ## Arsenal drawer and sample-size band
 
 Added 9 September 2026.

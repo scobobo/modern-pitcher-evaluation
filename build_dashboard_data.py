@@ -28,6 +28,7 @@ from evaluation import adjust_vaa_for_height, pitcher_season_table
 from fetch import load_seasons
 from leaderboard import _pairs, _shape_model
 from players import attach_age, fetch_bios
+from spin_efficiency import fetch as fetch_active_spin
 from projection import (
     SEPARATION_FEATURES,
     SHAPE_FEATURES,
@@ -336,6 +337,12 @@ def main() -> None:
     # One reference fastball per pitcher-season, so every secondary pitch can be
     # measured against the pitch hitters are timing.
     recent_seasons = [y for y in COMPLETE_SEASONS if y > max(COMPLETE_SEASONS) - TRAIN_WINDOW]
+    # Spin efficiency, where Hawk-Eye provides it. Not a contradiction of the
+    # paper's spin finding: that was residual spin *rate*, this is what
+    # fraction of the spin is actually tilted to move the ball.
+    active = fetch_active_spin(seasons)
+    log.info("active-spin rows: %s", f"{len(active):,}")
+
     reference = primary_fastball(data)
     log.info("reference fastballs: %s pitcher-seasons", f"{len(reference):,}")
 
@@ -363,12 +370,36 @@ def main() -> None:
         table = add_separation(table, reference)
         model_features = SHAPE_FEATURES + SEPARATION_FEATURES
 
+        if not active.empty:
+            table = table.merge(
+                active[active["pitch_type"].eq(pt)][["pitcher", "game_year", "active_spin"]],
+                on=["pitcher", "game_year"], how="left")
+        else:
+            table["active_spin"] = np.nan
+
         # Shape expectation, out-of-fold within each season so a pitcher never
         # informs his own benchmark.
+        # Every row gets a shape-only expectation. Rows that also have spin
+        # efficiency get a second, better one that overwrites it.
+        #
+        # Two models rather than one, because a single enriched model would
+        # simply drop every row without active spin -- which is all of
+        # 2015-2019 and a slice of every season since. Fitting them separately
+        # is safe here only because the expectation is already fit within each
+        # season, so nothing pools across eras that measure differently.
         table["shape_exp"] = np.nan
+        table["exp_enriched"] = False
         for yr, idx in table.groupby("game_year").groups.items():
-            table.loc[idx, "shape_exp"] = oof_shape_expectation(
-                table.loc[idx], TARGET, model_features)
+            season = table.loc[idx]
+            table.loc[idx, "shape_exp"] = oof_shape_expectation(season, TARGET, model_features)
+
+            with_spin = season.index[season["active_spin"].notna()]
+            if len(with_spin) >= 60:
+                enriched = oof_shape_expectation(
+                    table.loc[with_spin], TARGET, model_features + ["active_spin"])
+                ok = enriched.notna()
+                table.loc[enriched.index[ok], "shape_exp"] = enriched[ok]
+                table.loc[enriched.index[ok], "exp_enriched"] = True
 
         # A ridge extrapolates linearly, so a pitcher whose shape sits far
         # outside the normal range gets an expectation no pitcher has ever
@@ -436,6 +467,9 @@ def main() -> None:
     # sliders and curveballs. Here the edge is refit for each season using only
     # the seasons before it, which is the information a user actually has when
     # reading the board.
+    enriched_share = float(combined["exp_enriched"].mean() * 100) if "exp_enriched" in combined else 0.0
+    log.info("expectation enriched with spin efficiency on %.0f%% of rows", enriched_share)
+
     validation = {}
     for pt, g in combined.groupby("pitch_type"):
         validation[pt] = _walk_forward_verdict(g, TARGET)
@@ -516,6 +550,8 @@ def main() -> None:
             "train_window": TRAIN_WINDOW,
             "nameable_pitches": NAMEABLE_PITCHES,
             "candidate_pct": CANDIDATE_PCT,
+            "enriched_pct": round(enriched_share),
+            "spin_efficiency_from": 2020,
             "train_seasons": [int(min(recent_seasons)), int(max(recent_seasons))],
             "tracked_pitches": int(len(data)),
             "n_rows": len(rows),
