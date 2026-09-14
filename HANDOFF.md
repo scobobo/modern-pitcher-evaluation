@@ -239,10 +239,23 @@ praise; acknowledgements are conventionally short.
   that closed before each board:
 
   ```
-  FF t=+12.6   SI t=+7.5   SL t=+5.5   FC t=+2.4  → validated
-  CH t=+1.9    CU t=+1.8                          → promising, short of t=2
-  ST n=0                                          → untested, too new to score
+  FF t=+12.1   SI t=+6.5   SL t=+5.4             → validated
+  CH t=+1.6    CU t=+1.5                         → promising, short of t=2
+  FC n=62      ST n=0                            → untested, too few pairs
   ```
+
+  **Corrected 14 September 2026.** An earlier version of this table had the
+  cutter validated at t=+2.4 and four pitch types proven. That was partly an
+  artifact: validation scored each season against the one after it, which let
+  2025 be judged against *partial* 2026 whiff rates. The 106-game refresh on 14
+  September exposed it, moving the changeup from t=1.65 to t=2.02 and turning
+  its badge green on noise from a season still in progress. Outcomes are now
+  restricted to complete seasons, so verdicts change only when a season closes.
+  The cutter's scoreable pairs were 62 from 2024->2025 plus 65 from
+  2025->partial 2026; without the partial ones it falls under the 120 minimum
+  and is honestly untested. Its separation-feature gain (t=+4.3 in exploratory
+  testing) is real at the expectation level; it is the forecast that cannot yet
+  be verified.
 
   Two of seven became four of seven by giving the model **fastball-relative
   features** (`SEPARATION_FEATURES` in `src/projection.py`). A secondary pitch
@@ -279,8 +292,15 @@ praise; acknowledgements are conventionally short.
   so this cannot drift again.
 - **One-pager PDF.** 1 page, 8.50 × 11.00 in, selectable text. `build_pdf.sh`
   fails loudly if it ever becomes two pages.
-- **Data currency.** 2026 refreshed through 5 September: 631,402 pitches, 99.7%
-  run-value coverage. Dataset is 15,211 pitcher-seasons across 7 pitch types.
+- **Data currency.** 2026 refreshed through 13 September: 662,527 pitches.
+  Dataset is 15,263 pitcher-seasons across 7 pitch types. Active spin refreshed
+  the same day (19,846 rows, 3,130 for 2026). Board rows re-traced to raw
+  parquet after the refresh -- Varland, Soriano and Wells match exactly.
+- **Citation.** Dashboard footer now carries the paper DOI,
+  `10.5281/zenodo.22037431`, confirmed resolving 14 September to the Zenodo
+  record *The Shape of the Modern Pitch*, Version v1. The long-open item that
+  neither DOI had been checked is closed for the paper DOI; the code archive
+  DOI (`10.5281/zenodo.22037409`) still predates this session's model changes.
 - **Board rows trace to raw parquet.** Varland, Misiorowski and Chandler each
   recomputed from `data/statcast_2026.parquet` with no project modules: pitch
   counts, swings, whiff rate, velocity and IVB all match the leaderboard exactly.

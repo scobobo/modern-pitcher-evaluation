@@ -261,7 +261,13 @@ def _walk_forward_verdict(block: pd.DataFrame, target: str) -> dict:
 
     scored = []
     for season in sorted(g["game_year"].unique()):
-        if season > max(COMPLETE_SEASONS):
+        # The outcome season must be complete, not just the season being
+        # scored. Letting 2025 be judged against partial 2026 whiff rates made
+        # the verdicts drift with every data refresh: 106 extra games moved the
+        # changeup from t=1.65 to t=2.02 and turned its badge green, on noise
+        # from a season still in progress. A badge that changes weekly is not a
+        # verdict, so verdicts now move only when a season closes.
+        if season + 1 > max(COMPLETE_SEASONS):
             continue
         history = g[(g["game_year"] < season) & (g["game_year"] >= season - TRAIN_WINDOW)]
         train = _pairs(history, target, MIN_PITCHES, MIN_SWINGS)
