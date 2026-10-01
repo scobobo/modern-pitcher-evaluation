@@ -956,14 +956,16 @@
       items.push("<b>The edge is trained on the last " + META.train_window +
         " complete seasons only.</b> Shape and results drift apart as the league changes, so older seasons " +
         "made recent calls worse rather than better. Fit this way the edge held up in every one of the last " +
-        "eight seasons tested, with no sign of fading.");
+        "nine seasons tested, with no sign of fading.");
     }
 
     var html = "<h2>What this view says</h2><ul><li>" + items.join("</li><li>") + "</li></ul>";
 
     // Honest caveats that depend on what is on screen.
     var warns = [];
-    if (state.yrTo >= META.partial_season) {
+    // Guarded: between seasons partial_season is null, and yrTo >= null is
+    // always true in JS, which would put this caveat on every view.
+    if (META.partial_season != null && state.yrTo >= META.partial_season) {
       warns.push("<b>" + META.partial_season + " is a partial season.</b> Those rows cover fewer pitches than a full year, so their results are noisier than the rest.");
     }
     if (state.yrFrom <= 2019 && state.yrTo >= 2020) {
@@ -1399,7 +1401,7 @@
 
   document.getElementById("metaLine").textContent =
     META.n_rows.toLocaleString() + " pitcher-seasons \u00B7 " + META.seasons[0] + "\u2013" + META.seasons[1]
-    + " (" + META.partial_season + " partial)";
+    + (META.partial_season != null ? " (" + META.partial_season + " partial)" : "");
 
   window.addEventListener("resize", function () { renderScatter(filtered().sort(SORTS[state.sort] || SORTS.edge)); });
   if (window.matchMedia) {

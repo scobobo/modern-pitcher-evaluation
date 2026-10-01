@@ -30,16 +30,18 @@ SEASON_WINDOWS: dict[int, tuple[str, str]] = {
     2023: ("2023-03-30", "2023-10-01"),
     2024: ("2024-03-20", "2024-09-29"),
     2025: ("2025-03-18", "2025-09-28"),
-    # In progress. The end date is "as of" rather than the season's close, so
-    # anything built on 2026 is a partial sample by construction -- which is
-    # precisely the regime where shape outperforms outcome statistics.
-    2026: ("2026-03-25", "2026-09-13"),
+    # Closed 27 September; the postseason opened on the 29th. The fetch does
+    # not filter on game type, so this end date is what keeps playoff pitches
+    # out -- it must be the last regular-season day, not the day of the pull.
+    2026: ("2026-03-25", "2026-09-27"),
 }
 
 # Seasons that are complete. Trend analysis and model training use these only;
 # a partial season would enter on different terms from the ones around it.
-COMPLETE_SEASONS = tuple(range(2015, 2026))
-CURRENT_PARTIAL_SEASON = 2026
+COMPLETE_SEASONS = tuple(range(2015, 2027))
+# None between seasons. Set it to the new year, with an "as of" end date in
+# SEASON_WINDOWS, once that season's first refresh is pulled.
+CURRENT_PARTIAL_SEASON: int | None = None
 
 # Pitch types worth modelling. Anything rarer than this is too sparse to fit
 # per-season without the estimates becoming noise.

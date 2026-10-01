@@ -606,6 +606,76 @@ for. All three faults that produced a blank card on the paper are absent here.
 Unlike the paper, this URL has never been scraped before, so there is no stale
 cache to bust and no `?v=2` trick needed. The first share should render.
 
+## 2026 season closed, 30 September 2026
+
+The regular season ended 27 September (MLB StatsAPI: 2,429 games played, all
+final; the postseason opened on the 29th). `SEASON_WINDOWS` now ends 2026 on
+the 27th, `COMPLETE_SEASONS` runs through 2026, and `CURRENT_PARTIAL_SEASON` is
+`None`. `fetch.py` does not filter on game type, so the end date is the only
+thing keeping playoff pitches out: it has to be the last regular-season day,
+not the day of the pull.
+
+Re-pulled in full: 716,792 pitches (+54,265 since 13 September), every one of
+the 2,429 games MLB lists as played and none outside the regular season. Pitches
+through 13 September came back 662,529 against 662,527, the rest of the
+difference being Savant's usual pitch-type reclassification. Active spin was
+re-pulled for 2026 only (3,130 -> 3,221 rows), leaving 2020-2025 untouched. The
+dataset is 15,358 pitcher-seasons. Seven board rows re-traced to raw parquet --
+both Varlands, Misiorowski, Roupp and Wacha -- match exactly.
+
+Closing a season is the event the verdicts were built to wait for, and two
+moved:
+
+```
+       13 Sep (2026 partial)          30 Sep (2026 complete)
+FF     t=+12.1  n=2020  validated     t=+12.9  n=2299  validated
+SI     t=+6.5   n=1048  validated     t=+7.2   n=1205  validated
+SL     t=+5.4   n=840   validated     t=+5.4   n=970   validated
+CH     t=+1.6   n=310   promising     t=+2.1   n=415   validated
+FC     n=62             untested      t=+2.3   n=129   validated
+CU     t=+1.5   n=195   promising     t=+1.7   n=253   promising
+ST     n=0              untested      n=0              untested
+```
+
+**Both new greens are marginal**, and the t > 2 rule was applied as written
+rather than adjusted after seeing them. Broken down by outcome season:
+
+- **Changeup**, pooled t = 2.05. 2018->19 t=+0.4, 2021->22 +2.0, 2024->25 +0.9,
+  2025->26 +1.4. Dropping 2021, 2024 or 2025 alone puts it back under 2.
+  Pitcher-bootstrap 95% interval on r: +0.010 to +0.196.
+- **Cutter**, pooled t = 2.35 over only two scoreable seasons, and the new one
+  carries it: 2024->25 t=+0.86, 2025->26 t=+2.55. Bootstrap interval on r:
+  +0.040 to +0.369.
+
+Every season pairing points the right way for both, which is the case for
+believing them; neither would survive losing a single season. Re-examine both
+when 2027 closes.
+
+The four-seam backtest (`run_leaderboard.py`) gains 2025->2026 as a ninth test
+season, with lift +0.0192. Now **9 of 9**, 1,617 out-of-sample pitcher-seasons,
+mean lift +0.0235, corr +0.235 (t = +9.7), decile spread +0.0398. The 2017-2024
+rows reproduce the 6 September run to four decimals. The dashboard's "eight
+seasons" now reads "nine". The edge trains on 2023-2026.
+
+Not re-run: the spin-efficiency gains in the dashboard glossary (slider t=+5.9,
+cutter +3.8, four-seam +2.6) come from the 9 September test, whose script is not
+in the repo.
+
+The dashboard and `run_leaderboard.py` assumed a partial season always exists.
+`int(None)` would have crashed the build, and in the page `yrTo >= null` is
+always true, which would have put the partial-season caveat on every view. Both
+handle `None` now. When 2027 opens, set `CURRENT_PARTIAL_SEASON = 2027` and give
+it a window with an as-of end date.
+
+**Reproducibility wart, not yet fixed.** `primary_fastball` in
+`src/projection.py` picks the reference fastball with an unstable sort, so a
+pitcher with exactly equal four-seam and sinker counts gets whichever the
+platform's sort leaves first. Intel and Apple Silicon disagree on two
+pitcher-seasons (Kontos 2015, Brito 2024). That shifts about 1,100
+expectations in those season-and-pitch groups by a median 0.0002 and moves no
+verdict. A stable sort with an explicit tie-break fixes it, at the cost of
+moving those published rows slightly.
+
 ## Where things stand
 
 The paper is published and citable. The repo is public and in sync. The

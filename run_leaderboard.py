@@ -33,7 +33,7 @@ OUT = OUTPUT_DIR / "leaderboard"
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Validated pitch-shape leaderboard.")
-    ap.add_argument("--season", type=int, default=CURRENT_PARTIAL_SEASON)
+    ap.add_argument("--season", type=int, default=CURRENT_PARTIAL_SEASON or max(COMPLETE_SEASONS))
     ap.add_argument("--target", default="whiff_rate", choices=["whiff_rate", "run_value_pitcher"])
     ap.add_argument("--pitch-type", default="FF")
     ap.add_argument("--min-pitches", type=int, default=250)

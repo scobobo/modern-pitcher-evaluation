@@ -333,7 +333,7 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     OUT.mkdir(parents=True, exist_ok=True)
 
-    seasons = tuple(sorted(set(COMPLETE_SEASONS) | {CURRENT_PARTIAL_SEASON}))
+    seasons = tuple(sorted(set(COMPLETE_SEASONS) | ({CURRENT_PARTIAL_SEASON} - {None})))
     data = adjust_vaa_for_height(feat.build(load_seasons(seasons)))
     log.info("feature table: %s pitches", f"{len(data):,}")
 
@@ -548,7 +548,8 @@ def main() -> None:
         "rows": rows,
         "meta": {
             "seasons": [int(min(seasons)), int(max(seasons))],
-            "partial_season": int(CURRENT_PARTIAL_SEASON),
+            # null between seasons; the page drops its partial-season caveat.
+            "partial_season": CURRENT_PARTIAL_SEASON,
             "pitch_types": sorted(combined["pitch_type"].unique().tolist()),
             "min_pitches": MIN_PITCHES,
             "min_swings": MIN_SWINGS,
