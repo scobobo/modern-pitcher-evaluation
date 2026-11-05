@@ -55,6 +55,11 @@ def main() -> None:
     sys.path.insert(0, str(ROOT / "src"))
     from config import DASHBOARD_URL
     from paper_figures import fig_dashboard_card
+    from urllib.parse import quote
+    # The paper's tab icon, inlined the same way, so the two sites read as one
+    # body of work and a static host never serves a /favicon.ico 404.
+    from build_standalone import FAVICON_SVG
+    favicon = "data:image/svg+xml," + quote(FAVICON_SVG, safe="")
 
     card = fig_dashboard_card(standalone.parent / "dashboard-card.png", (parsed["columns"], parsed["rows"], parsed["meta"]))
     (standalone.parent / "dashboard-card.png").unlink(missing_ok=True)
@@ -75,6 +80,7 @@ def main() -> None:
         '<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
         f"<title>{title}</title>\n"
+        f'<link rel="icon" href="{favicon}">\n'
         f'<meta name="description" content="{desc}">\n'
         f'<meta property="og:title" content="{title}">\n'
         f'<meta property="og:description" content="{desc}">\n'

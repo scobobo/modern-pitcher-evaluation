@@ -86,7 +86,7 @@ def primary_fastball(df: pd.DataFrame) -> pd.DataFrame:
 
     Four-seam or sinker, taken by volume. A pitcher who leads with a sinker is
     calibrating hitters to a sinker, so that is the pitch his slider has to
-    differ from.
+    differ from. An exact tie goes to the four-seamer.
     """
     frames = []
     for pitch in ("FF", "SI"):
@@ -105,7 +105,11 @@ def primary_fastball(df: pd.DataFrame) -> pd.DataFrame:
     if not frames:
         return pd.DataFrame()
 
-    ref = pd.concat(frames).sort_values("n", ascending=False)
+    # Stable sort, so an exact tie keeps concat order and the four-seamer wins.
+    # The default quicksort broke ties by memory layout: the chosen fastball
+    # differed between Intel and Apple Silicon, and flipped in old seasons
+    # whenever 2026 data was revised (Kontos 2015, Tepera 2017, Brito 2024).
+    ref = pd.concat(frames).sort_values("n", ascending=False, kind="stable")
     ref = ref.drop_duplicates(["pitcher", "game_year"])
     ref = ref[ref["n"] >= MIN_REFERENCE_FASTBALL]
     return ref.rename(columns={c: f"fb_{c}" for c in ("n", "velo", "ivb", "hb", "rz", "rx")})

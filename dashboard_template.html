@@ -1259,9 +1259,11 @@
              (pad.t + h / 2) + ')">ride &rarr;</text>');
 
     out.push('<g transform="translate(' + pad.l + ',' + (H - 10) + ')">');
+    // Spaced from each label's length (9px mono is ~5.4 units a character).
+    // Fixed offsets ran every label into the next marker.
     out.push('<circle cx="5" cy="-4" r="5" class="mp ref"></circle><text x="14" y="0" class="ma">his fastball</text>');
-    out.push('<circle cx="80" cy="-4" r="5" class="mp"></circle><text x="89" y="0" class="ma">his other pitches</text>');
-    out.push('<circle cx="185" cy="-4" r="5" class="mavg"></circle><text x="194" y="0" class="ma">league average</text>');
+    out.push('<circle cx="96" cy="-4" r="5" class="mp"></circle><text x="105" y="0" class="ma">his other pitches</text>');
+    out.push('<circle cx="214" cy="-4" r="5" class="mavg"></circle><text x="223" y="0" class="ma">league average</text>');
     out.push("</g>");
 
     out.push("</svg>");

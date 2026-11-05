@@ -667,7 +667,7 @@ always true, which would have put the partial-season caveat on every view. Both
 handle `None` now. When 2027 opens, set `CURRENT_PARTIAL_SEASON = 2027` and give
 it a window with an as-of end date.
 
-**Reproducibility wart, not yet fixed.** `primary_fastball` in
+**Reproducibility wart -- fixed 5 November, see below.** `primary_fastball` in
 `src/projection.py` picks the reference fastball with an unstable sort, so a
 pitcher with exactly equal four-seam and sinker counts gets whichever the
 platform's sort leaves first. Intel and Apple Silicon disagree on two
@@ -675,6 +675,41 @@ pitcher-seasons (Kontos 2015, Brito 2024). That shifts about 1,100
 expectations in those season-and-pitch groups by a median 0.0002 and moves no
 verdict. A stable sort with an explicit tie-break fixes it, at the cost of
 moving those published rows slightly.
+
+## Final 2026 data and the tie-break fix, 5 November 2026
+
+Re-pulled 2026 after the postseason, before posting the dashboard. Same 716,792
+pitches from the same 2,429 games, but Savant had revised the season since 30
+September: about 650 curveballs relabelled knuckle-curves, 131 sliders
+relabelled, and tracking values revised on roughly 2,700 pitches. Active spin
+for 2026 went from 3,221 to 3,225 rows. The revised data is installed.
+
+**No verdict moved**: CH t=2.1 (415 pairs), CU 1.7 (252), FC 2.4 (128), FF 12.9,
+SI 7.2, SL 5.5. 16 of the 158 named 2026 progression/regression calls changed,
+nearly all pitchers sitting at the 10% line, and three pitcher-pitch rows swapped
+with the relabelling. Gavin Williams leaves the curveball board: Savant now
+calls his 664 curveballs knuckle-curves, which the dashboard does not model.
+Backtest unchanged at 9 of 9, 1,617 pitcher-seasons, t=+9.7. Seven 2026 rows
+re-traced to raw parquet match. Peralta's curveball is one pitch short of raw
+because a 33 rpm spin reading is cleaned out; it was a ball, so swings and whiff
+rate are unaffected.
+
+**Tie-break fixed.** `primary_fastball` now uses a stable sort, so an exact tie
+goes to the four-seamer. The re-pull showed the problem was worse than platform
+drift: revising only 2026 flipped Ryan Tepera's 2017 reference fastball,
+because the unstable sort ran over every season at once. There are four exact
+ties (Kontos 2015, Tepera 2017, Alzolay 2023, Brito 2024) and all four now use
+the four-seamer. On this data the old sort happened to land the same way, so the
+fix moves no row today; it stops future rebuilds reshuffling them.
+
+Dashboard polish: the movement-chart legend labels overlapped the next marker
+by 1-3 px at every width because the offsets were fixed; they are now spaced
+from label length. The page also carries the paper's tab icon, inlined, which
+ends the `/favicon.ico` 404.
+
+**Netlify was missing the preview card.** The live site had the 30 September
+page but `dashboard-card.jpg` returned 404, so a shared link would have shown
+no card. Upload the whole `site-dashboard/` folder, not `index.html` alone.
 
 ## Where things stand
 
