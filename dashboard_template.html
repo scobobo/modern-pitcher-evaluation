@@ -304,7 +304,7 @@
   </header>
 
   <div class="note">
-    <strong>The model is fixed, not refit.</strong> <span id="modelnote"></span> Filtering changes which pitchers you see, never what the model learned.
+    <strong>The models are fixed, not refit.</strong> <span id="modelnote"></span> Filtering changes which pitchers you see, never what either model learned.
   </div>
 
   <div class="filters" id="filters">
@@ -367,7 +367,7 @@
       <dt>Edge</dt>
       <dd>What the shape argues for beyond simple regression to the mean. Positive means the stuff is better than the results; negative means the results are running ahead of the stuff.</dd>
       <dt>Why filtering<br>does not refit</dt>
-      <dd>The shape expectation is fit out-of-fold and grouped by pitcher, so no pitcher's expectation comes from a model that has seen him. From <b>2020</b> it also uses <b>spin efficiency</b> &mdash; what fraction of a pitch's spin is tilted to actually move the ball, rather than pointing down the flight path and doing nothing. That is a different measurement from spin rate, which the underlying paper found adds nothing once velocity is accounted for. Efficiency does add something: it improves the expectation on sliders (<span class="mono">t = +5.9</span>), cutters (<span class="mono">+3.8</span>) and four-seamers (<span class="mono">+2.6</span>), and nothing measurable elsewhere. It comes from Hawk-Eye and does not exist before 2020, so earlier seasons use ball flight alone; each season is fit separately, so nothing pools across that boundary. The edge is trained on the <b>four most recent complete seasons</b> rather than all eleven, because the game drifts: league fastball velocity is up nearly two miles an hour since 2015, and including seasons that old made recent predictions measurably worse. Both are fit once, here, and then applied to every row. If the model refit itself on whatever you filtered to, a narrow selection would quietly report a model trained on a handful of rows with no validation behind it.</dd>
+      <dd>The shape expectation is fit out-of-fold and grouped by pitcher, so no pitcher's expectation comes from a model that has seen him. From <b>2020</b> it also uses <b>spin efficiency</b> &mdash; what fraction of a pitch's spin is tilted to actually move the ball, rather than pointing down the flight path and doing nothing. That is a different measurement from spin rate, which the underlying paper found adds nothing once velocity is accounted for. Efficiency does add something: it improves the expectation on sliders (<span class="mono">t = +5.9</span>), cutters (<span class="mono">+3.8</span>) and four-seamers (<span class="mono">+2.6</span>), and nothing measurable elsewhere. It comes from Hawk-Eye and does not exist before 2020, so earlier seasons use ball flight alone; each season is fit separately, so nothing pools across that boundary. The edge is trained on the <b>four most recent complete seasons</b> rather than every season back to 2015, because the game drifts: league fastball velocity is up nearly two miles an hour since 2015, and including seasons that old made recent predictions measurably worse. Both are fit once, here, and then applied to every row. If the model refit itself on whatever you filtered to, a narrow selection would quietly report a model trained on a handful of rows with no validation behind it.</dd>
     </dl>
   </details>
 
@@ -478,9 +478,14 @@
     if (eb && META.tracked_pitches)
       eb.textContent = "Pitch Shape Explorer \u00b7 " + META.tracked_pitches.toLocaleString() + " tracked pitches";
     var mn = document.getElementById("modelnote");
+    // Two models, and the note has to say which seasons each one uses: naming
+    // only the edge's training window read as if every row came from 2023-2026.
     if (mn && META.train_seasons)
-      mn.textContent = "It was trained once on the " + META.train_seasons[0] + "\u2013" + META.train_seasons[1] +
-        " seasons, the most recent " + META.train_window + " complete years, and applied to every row.";
+      mn.textContent = "The shape expectation is fit within each season, " + META.seasons[0] + "\u2013" +
+        META.seasons[1] + ". The progression and regression calls come from a second model trained only on " +
+        META.train_seasons[0] + "\u2013" + META.train_seasons[1] + ", the most recent " + META.train_window +
+        " complete seasons, because the game has changed since " + META.seasons[0] +
+        ". Both are applied to every row.";
   })();
 
   // Where a pitcher-season stands, in the language the boards use. Computed
