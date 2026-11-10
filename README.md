@@ -1,6 +1,6 @@
 # The Shape of the Modern Pitch
 
-Analysis code for a pitch-level study of **7,483,321 Statcast pitches (2015–2025)**
+Analysis code for a pitch-level study of **7,483,321 Statcast pitches (2015–2026)**
 testing what actually drives pitch outcomes — and what that implies for how
 pitchers should be evaluated.
 
