@@ -21,7 +21,7 @@ OUTPUT = ROOT / "The-Shape-of-the-Modern-Pitch.html"
 
 # Where the paper is hosted. Open Graph images must be absolute URLs -- a
 # relative path renders no preview card at all on LinkedIn, X, or Slack.
-SITE_URL = "https://the-shape-of-the-modern-pitch.netlify.app"
+SITE_URL = "https://scottluntz.com/modern-pitch"
 # JPEG, and a filename LinkedIn has not seen before: its Open Graph cache is
 # sticky, and a URL it once scraped while the image was missing keeps
 # returning no card even after the image is fixed.

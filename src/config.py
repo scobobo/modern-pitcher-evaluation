@@ -70,5 +70,7 @@ MIN_PITCHES_PER_PITCHER_SEASON = 250
 # a relative path or a wrong host produces a link with no preview card at all,
 # and the failure is silent -- the page itself serves a clean 200.
 #
-# Set this to the real host before sharing the link anywhere.
-DASHBOARD_URL = "https://pitch-shape-explorer.netlify.app"
+# Set this to the real host before sharing the link anywhere. Moved from
+# pitch-shape-explorer.netlify.app to scottluntz.com in November 2026; the old
+# Netlify site now redirects here.
+DASHBOARD_URL = "https://scottluntz.com/pitch-shape-explorer"

@@ -711,6 +711,32 @@ ends the `/favicon.ico` 404.
 page but `dashboard-card.jpg` returned 404, so a shared link would have shown
 no card. Upload the whole `site-dashboard/` folder, not `index.html` alone.
 
+## Moved to scottluntz.com, 18 November 2026
+
+The paper and dashboard now live on Scott's own domain, alongside a home page,
+in a separate repository (`../scottluntz.com`, served by GitHub Pages from its
+`docs/` folder):
+
+```
+https://scottluntz.com/                        home page
+https://scottluntz.com/modern-pitch/           the paper
+https://scottluntz.com/pitch-shape-explorer/   the dashboard
+```
+
+`SITE_URL` in `build_standalone.py` and `DASHBOARD_URL` in `src/config.py`
+point there, so the preview tags and cards do too. The dashboard footer and
+the one-pager link to the new paper address, and the paper's colophon links
+back to the home page and the dashboard. Rebuild here first, then run
+`build.py` in the site repo, which refuses to publish a stale build.
+
+The two Netlify sites are kept as 301 redirects to the new addresses, so every
+link already shared keeps working; the redirect folders are in the site repo
+under `netlify-redirects/`. **Do not delete the Netlify sites.** Netlify's
+injected badge, which covered the dashboard's search box on phones, is gone with
+the move.
+
+The betting work is deliberately not on the site; Scott's decision.
+
 ## Where things stand
 
 The paper is published and citable. The repo is public and in sync. The

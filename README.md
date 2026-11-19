@@ -5,9 +5,9 @@ testing what actually drives pitch outcomes — and what that implies for how
 pitchers should be evaluated — and for **Pitch Shape Explorer**, a dashboard
 that applies the finding to every MLB pitcher-season from 2015 through 2026.
 
-📄 **Read the paper:** https://the-shape-of-the-modern-pitch.netlify.app/
+📄 **Read the paper:** https://scottluntz.com/modern-pitch/
 
-📊 **Explore the dashboard:** https://pitch-shape-explorer.netlify.app/
+📊 **Explore the dashboard:** https://scottluntz.com/pitch-shape-explorer/
 
 💻 **Code:** [https://github.com/scobobo/modern-pitcher-evaluation](https://github.com/scobobo/modern-pitcher-evaluation)
 
